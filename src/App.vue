@@ -23,13 +23,17 @@
         v-show="tab.id === activeTabId"
       />
     </div>
+    <SettingsModal :open="settingsOpen" @close="settingsOpen = false" />
   </div>
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck
 import { ref, onMounted, onBeforeUnmount, nextTick, onBeforeUpdate, watch } from 'vue';
 import TabBar from './components/TabBar.vue';
 import TerminalTab from './components/TerminalTab.vue';
+import SettingsModal from './components/SettingsModal.vue';
+import { useSettingsStore } from './stores/settings';
 
 // --- Font Settings ---
 const fontFamily = ref('"MesloLGS NF", monospace');
@@ -47,6 +51,8 @@ const tabs = ref([
 ]);
 const activeTabId = ref(1);
 const terminalTabRefs = ref<any[]>([]);
+const settingsOpen = ref(false);
+const settingsStore = useSettingsStore();
 
 // Ensure refs are updated correctly before each render
 onBeforeUpdate(() => {
@@ -157,6 +163,9 @@ let increaseFontSizeListener: (() => void) | undefined;
 let decreaseFontSizeListener: (() => void) | undefined;
 
 onMounted(() => {
+  // load settings on start
+  settingsStore.load();
+  (window as any).settings.onOpen(() => { settingsOpen.value = true })
   statusListener = window.ssh.on('ssh:status', ({ tabId, status }) => {
     const tab = getTabById(tabId);
     if (!tab) return;

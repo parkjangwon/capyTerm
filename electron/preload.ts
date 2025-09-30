@@ -1,6 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron';
 
-const validChannels = ['ssh:data', 'ssh:status', 'ssh:error'];
+const validChannels = ['ssh:data', 'ssh:status', 'ssh:error', 'settings:open'];
 
 contextBridge.exposeInMainWorld('ssh', {
   connect: (tabId: number, options: any) => ipcRenderer.send('ssh:connect', { tabId, options }),
@@ -24,3 +24,14 @@ contextBridge.exposeInMainWorld('ssh', {
       }
     },
   });
+
+contextBridge.exposeInMainWorld('settings', {
+  read: () => ipcRenderer.invoke('settings:read'),
+  write: (settings: any) => ipcRenderer.invoke('settings:write', settings),
+  path: () => ipcRenderer.invoke('settings:path'),
+  onOpen: (handler: () => void) => {
+    const subscription = () => handler()
+    ipcRenderer.on('settings:open', subscription)
+    return () => ipcRenderer.removeListener('settings:open', subscription)
+  }
+});

@@ -1,0 +1,25 @@
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --panel: #f5f5f7;
+  --border: #d0d0d0;
+  --input-bg: #ffffff;
+  --btn-bg: #e9e9ef;
+  --btn-fg: #111111;
+}
+
+[data-theme="dark"] {
+  --bg: #1e1e1e;
+  --fg: #f3f3f3;
+  --panel: #2a2a2a;
+  --border: #3a3a3a;
+  --input-bg: #202020;
+  --btn-bg: #2c2c2c;
+  --btn-fg: #f3f3f3;
+}
+
+html, body, #app {
+  background-color: var(--bg);
+  color: var(--fg);
+}
+

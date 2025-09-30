@@ -1,6 +1,6 @@
 "use strict";
 const electron = require("electron");
-const validChannels = ["ssh:data", "ssh:status", "ssh:error"];
+const validChannels = ["ssh:data", "ssh:status", "ssh:error", "settings:open"];
 electron.contextBridge.exposeInMainWorld("ssh", {
   connect: (tabId, options) => electron.ipcRenderer.send("ssh:connect", { tabId, options }),
   sendData: (tabId, data) => electron.ipcRenderer.send("ssh:data", { tabId, data }),
@@ -20,5 +20,15 @@ electron.contextBridge.exposeInMainWorld("ssh", {
     if (validChannels.includes(channel)) {
       electron.ipcRenderer.removeAllListeners(channel);
     }
+  }
+});
+electron.contextBridge.exposeInMainWorld("settings", {
+  read: () => electron.ipcRenderer.invoke("settings:read"),
+  write: (settings) => electron.ipcRenderer.invoke("settings:write", settings),
+  path: () => electron.ipcRenderer.invoke("settings:path"),
+  onOpen: (handler) => {
+    const subscription = () => handler();
+    electron.ipcRenderer.on("settings:open", subscription);
+    return () => electron.ipcRenderer.removeListener("settings:open", subscription);
   }
 });
