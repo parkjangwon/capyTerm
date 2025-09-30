@@ -47,6 +47,7 @@ export function useTabManager() {
     }
     tabs.value.push(newTab)
     activeTabId.value = newTab.id
+    return newTab
   }
 
   function handleDuplicateTab(onDuplicate?: (originalId: number, newId: number) => void) {

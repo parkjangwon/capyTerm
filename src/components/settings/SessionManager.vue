@@ -1,71 +1,48 @@
 <template>
   <div class="section">
-    <div class="row add-row toolbar">
-      <input v-model="filterText" :placeholder="$t('settings.filterPlaceholder')" />
-      <span class="spacer"></span>
-      <button @click="openAddChooser">{{ $t('app.add') }}</button>
+    <div class="toolbar">
+      <input 
+        v-model="filterText" 
+        class="search-input"
+        :placeholder="$t('settings.filterPlaceholder')" 
+      />
+      <button class="add-btn" @click="openAddChooser">
+        <span class="btn-icon">+</span>
+        {{ $t('app.add') }}
+      </button>
     </div>
 
-    <ul class="tree">
-      <SessionTreeGroup
+    <div class="sessions-container">
+      <!-- Root sessions (미지정) -->
+      <SessionGroup
+        v-if="filteredRootSessions.length > 0"
         :label="$t('settings.root')"
         :sessions="filteredRootSessions"
-        :expanded="true"
+        :show-header="true"
         @drag-start-session="onDragStartSession"
         @drop="onDropOnRoot"
         @clone-session="cloneSession"
         @edit-session="openSessionEdit"
         @delete-session="removeSession"
-      >
-        <SessionTreeGroup
-          v-for="f in filteredChildGroups(undefined)"
-          :key="f.id"
-          :folder="f"
-          :label="`${$t('settings.group')}: ${f.name}`"
-          :sessions="filteredSessionsByFolderId(f.id)"
-          @drag-start-folder="onDragStartFolder"
-          @drag-start-session="onDragStartSession"
-          @drop="onDropOnFolder"
-          @edit-folder="openFolderEdit"
-          @delete-folder="removeFolder"
-          @clone-session="cloneSession"
-          @edit-session="openSessionEdit"
-          @delete-session="removeSession"
-        >
-          <SessionTreeGroup
-            v-for="cg in filteredChildGroups(f.id)"
-            :key="cg.id"
-            :folder="cg"
-            :label="`${$t('settings.group')}: ${cg.name}`"
-            :sessions="filteredSessionsByFolderId(cg.id)"
-            @drag-start-folder="onDragStartFolder"
-            @drag-start-session="onDragStartSession"
-            @drop="onDropOnFolder"
-            @edit-folder="openFolderEdit"
-            @delete-folder="removeFolder"
-            @clone-session="cloneSession"
-            @edit-session="openSessionEdit"
-            @delete-session="removeSession"
-          >
-            <SessionTreeGroup
-              v-for="gg in filteredChildGroups(cg.id)"
-              :key="gg.id"
-              :folder="gg"
-              :label="`${$t('settings.group')}: ${gg.name}`"
-              :sessions="filteredSessionsByFolderId(gg.id)"
-              @drag-start-folder="onDragStartFolder"
-              @drag-start-session="onDragStartSession"
-              @drop="onDropOnFolder"
-              @edit-folder="openFolderEdit"
-              @delete-folder="removeFolder"
-              @clone-session="cloneSession"
-              @edit-session="openSessionEdit"
-              @delete-session="removeSession"
-            />
-          </SessionTreeGroup>
-        </SessionTreeGroup>
-      </SessionTreeGroup>
-    </ul>
+      />
+
+      <!-- Folders with sessions -->
+      <SessionGroup
+        v-for="folder in filteredFolders"
+        :key="folder.id"
+        :label="folder.name"
+        :sessions="filteredSessionsByFolderId(folder.id)"
+        :is-folder="true"
+        @drag-start-folder="onDragStartFolder(folder.id)"
+        @drag-start-session="onDragStartSession"
+        @drop="onDropOnFolder(folder.id)"
+        @edit="openFolderEdit(folder.id)"
+        @delete="removeFolder(folder.id)"
+        @clone-session="cloneSession"
+        @edit-session="openSessionEdit"
+        @delete-session="removeSession"
+      />
+    </div>
 
     <!-- Add chooser modal -->
     <div v-if="addChooserOpen" class="modal-backdrop" @click.self="closeAddChooser">
@@ -118,7 +95,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { useSettingsStore } from '../../stores/settings'
-import SessionTreeGroup from './SessionTreeGroup.vue'
+import SessionGroup from './SessionGroup.vue'
 import SessionForm from './SessionForm.vue'
 import FolderForm from './FolderForm.vue'
 
@@ -172,21 +149,22 @@ const filteredRootSessions = computed(() => {
   return rootSessions.value.filter(s => s.name.toLowerCase().includes(q) || `${s.user} ${s.host}`.toLowerCase().includes(q))
 })
 
-function childGroups(parentId: string | undefined) {
-  return settings.sshSessionFolders.filter(g => g.parentId === parentId)
-}
-
-function filteredChildGroups(parentId: string | undefined) {
+// Get all folders that match filter or contain matching sessions
+const filteredFolders = computed(() => {
   const q = filterText.value.trim().toLowerCase()
-  const list = childGroups(parentId)
-  if (!q) return list
-  // Filter groups by name OR if they contain matching sessions
-  return list.filter(g => {
-    if (g.name.toLowerCase().includes(q)) return true
-    const sessionsInGroup = settings.sshSessions.filter(s => s.folderId === g.id)
-    return sessionsInGroup.some(s => s.name.toLowerCase().includes(q) || `${s.user} ${s.host}`.toLowerCase().includes(q))
+  if (!q) return settings.sshSessionFolders
+  
+  return settings.sshSessionFolders.filter(folder => {
+    // Show folder if name matches
+    if (folder.name.toLowerCase().includes(q)) return true
+    // Show folder if it contains matching sessions
+    const sessionsInFolder = settings.sshSessions.filter(s => s.folderId === folder.id)
+    return sessionsInFolder.some(s => 
+      s.name.toLowerCase().includes(q) || 
+      `${s.user} ${s.host}`.toLowerCase().includes(q)
+    )
   })
-}
+})
 
 function filteredSessionsByFolderId(folderId: string) {
   const q = filterText.value.trim().toLowerCase()
@@ -349,13 +327,88 @@ function addFolder(data: { name: string, parentId?: string }) {
 </script>
 
 <style scoped>
-.section { margin-bottom: 20px; }
-.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.toolbar { margin-bottom: 12px; }
-.spacer { flex: 1; }
-.tree { list-style: none; padding-left: 0; margin: 8px 0 0 0; }
+.section { 
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 14px;
+  background: var(--input-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.add-btn:hover {
+  background: #1565c0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sessions-container {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.sessions-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sessions-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sessions-container::-webkit-scrollbar-thumb {
+  background: rgba(var(--fg-rgb, 0, 0, 0), 0.2);
+  border-radius: 4px;
+}
+
+.sessions-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--fg-rgb, 0, 0, 0), 0.3);
+}
+
 input, select { background: var(--input-bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
-button { background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
+button:not(.add-btn):not(.action-btn) { background: var(--btn-bg); color: var(--btn-fg); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; cursor: pointer; }
 button.danger { background: #a33; color: white; border-color: #a33; }
 
 .modal-backdrop {

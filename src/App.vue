@@ -29,15 +29,21 @@
       </v-container>
     </v-main>
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" />
+    <SessionPickerModal 
+      :open="sessionPickerOpen" 
+      @close="sessionPickerOpen = false"
+      @select-session="handleSessionSelect"
+    />
   </v-app>
 </template>
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, onMounted, onBeforeUnmount, onBeforeUpdate, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, onBeforeUpdate, watch, nextTick } from 'vue';
 import TabBar from './components/TabBar.vue';
 import TerminalTab from './components/TerminalTab.vue';
 import SettingsModal from './components/SettingsModal.vue';
+import SessionPickerModal from './components/SessionPickerModal.vue';
 import { useSettingsStore } from './stores/settings';
 import { useTabManager } from './composables/useTabManager';
 import { useSSHConnection } from './composables/useSSHConnection';
@@ -60,6 +66,7 @@ const {
 // --- Terminal Refs ---
 const terminalTabRefs = ref<any[]>([]);
 const settingsOpen = ref(false);
+const sessionPickerOpen = ref(false);
 const settingsStore = useSettingsStore();
 
 // Ensure refs are updated correctly before each render
@@ -94,6 +101,40 @@ function onDuplicateTab() {
   });
 }
 
+// --- Session Picker ---
+async function handleSessionSelect(session: any) {
+  // Create new tab with session info
+  const newTab = handleNewTab();
+  
+  if (!newTab) {
+    console.error('Failed to create new tab');
+    return;
+  }
+  
+  const connectionOptions = {
+    host: session.host,
+    port: session.port || 22,
+    username: session.user,
+    ...(session.auth.method === 'password' 
+      ? { password: session.auth.password }
+      : { privateKeyPath: session.auth.privateKeyPath, passphrase: session.auth.passphrase }
+    )
+  };
+  
+  // Wait for the tab to be fully rendered, then connect
+  await nextTick();
+  handleConnect(newTab.id, connectionOptions);
+}
+
+// --- Keyboard Shortcuts ---
+function handleKeyDown(e: KeyboardEvent) {
+  // Command + B (Mac) or Ctrl + B (Windows/Linux)
+  if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+    e.preventDefault();
+    sessionPickerOpen.value = true;
+  }
+}
+
 // --- Lifecycle ---
 onMounted(() => {
   // load settings on start
@@ -102,10 +143,14 @@ onMounted(() => {
   
   // Setup SSH listeners
   setupListeners(tabs);
+  
+  // Setup keyboard shortcuts
+  window.addEventListener('keydown', handleKeyDown);
 });
 
 onBeforeUnmount(() => {
   cleanupListeners(tabs);
+  window.removeEventListener('keydown', handleKeyDown);
 });
 
 </script>
