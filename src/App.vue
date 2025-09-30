@@ -7,9 +7,9 @@
             :tabs="tabs" 
             :active-tab-id="activeTabId" 
             @switch-tab="handleSwitchTab"
-            @close-tab="handleCloseTab"
+            @close-tab="onCloseTab"
             @new-tab="handleNewTab"
-            @duplicate-tab="handleDuplicateTab"
+            @duplicate-tab="onDuplicateTab"
             @open-settings="settingsOpen = true"
           />
         </div>
@@ -34,27 +34,30 @@
 
 <script setup lang="ts">
 // @ts-nocheck
-import { ref, onMounted, onBeforeUnmount, nextTick, onBeforeUpdate, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, onBeforeUpdate, watch } from 'vue';
 import TabBar from './components/TabBar.vue';
 import TerminalTab from './components/TerminalTab.vue';
 import SettingsModal from './components/SettingsModal.vue';
 import { useSettingsStore } from './stores/settings';
+import { useTabManager } from './composables/useTabManager';
+import { useSSHConnection } from './composables/useSSHConnection';
 
 // --- Font Settings ---
 const fontFamily = ref('"MesloLGS NF", monospace');
 const fontSize = ref(14);
 
-// --- State Management ---
-let tabCounter = 1;
-const tabs = ref([
-  {
-    id: 1, 
-    name: 'Tab 1', 
-    connected: false, 
-    connectionOptions: { host: '', port: 22, username: '' } 
-  },
-]);
-const activeTabId = ref(1);
+// --- Tab Management ---
+const {
+  tabs,
+  activeTabId,
+  getTabById,
+  handleNewTab,
+  handleDuplicateTab,
+  handleSwitchTab,
+  handleCloseTab
+} = useTabManager();
+
+// --- Terminal Refs ---
 const terminalTabRefs = ref<any[]>([]);
 const settingsOpen = ref(false);
 const settingsStore = useSettingsStore();
@@ -72,137 +75,37 @@ watch([fontFamily, fontSize], ([newFamily, newSize]) => {
   }
 });
 
-// --- Tab Actions ---
-function handleNewTab(optionsToClone = {}) {
-  tabCounter++;
-  const newTab = {
-    id: tabCounter,
-    name: `Tab ${tabCounter}`,
-    connected: false,
-    connectionOptions: {
-      host: '', 
-      port: 22, 
-      username: '',
-      ...optionsToClone
-    },
-  };
-  tabs.value.push(newTab);
-  activeTabId.value = newTab.id;
+// --- SSH Connection Management ---
+const {
+  handleConnect,
+  handleDisconnect,
+  setupListeners,
+  cleanupListeners
+} = useSSHConnection(getTabById, terminalTabRefs);
+
+// Wrap handlers for tab operations
+function onCloseTab(tabId: number) {
+  handleCloseTab(tabId, handleDisconnect);
 }
 
-function handleDuplicateTab() {
-  const activeTab = getActiveTab();
-  if (!activeTab) return;
-
-  tabCounter++;
-  const newTab = {
-    id: tabCounter,
-    name: `Tab ${tabCounter}`,
-    connected: activeTab.connected, // Inherit connected state
-    connectionOptions: { ...activeTab.connectionOptions },
-  };
-  tabs.value.push(newTab);
-  activeTabId.value = newTab.id;
-
-  if (activeTab.connected) {
-    // If the original tab was connected, share its session
-    nextTick(() => {
-      window.ssh.duplicateSession(activeTab.id, newTab.id);
-    });
-  }
+function onDuplicateTab() {
+  handleDuplicateTab((originalId: number, newId: number) => {
+    window.ssh.duplicateSession(originalId, newId);
+  });
 }
 
-function handleSwitchTab(tabId: number) {
-  activeTabId.value = tabId;
-}
-
-function handleCloseTab(tabId: number) {
-  const index = tabs.value.findIndex(t => t.id === tabId);
-  if (index === -1) return;
-
-  // Disconnect before closing
-  handleDisconnect(tabId);
-
-  // If closing the active tab, decide which tab to switch to
-  if (activeTabId.value === tabId) {
-    const newActiveTab = tabs.value[index - 1] || tabs.value[index + 1];
-    activeTabId.value = newActiveTab ? newActiveTab.id : 0;
-  }
-
-  tabs.value.splice(index, 1);
-
-  // If all tabs are closed, create a new default one
-  if (tabs.value.length === 0) {
-    nextTick(() => handleNewTab());
-  }
-}
-
-// --- SSH Actions ---
-function getTabById(tabId: number) {
-  return tabs.value.find(t => t.id === tabId);
-}
-function getActiveTab() {
-  return getTabById(activeTabId.value);
-}
-
-function handleConnect(tabId: number, options: any) {
-  const tab = getTabById(tabId);
-  if (!tab) return;
-
-  tab.connectionOptions = { host: options.host, username: options.username, ...options };
-  window.ssh.connect(tabId, options);
-}
-
-function handleDisconnect(tabId: number) {
-  const tab = getTabById(tabId);
-  if (tab && tab.connected) {
-    window.ssh.disconnect(tabId);
-  }
-}
-
-// --- Global IPC Listeners ---
-let statusListener: (() => void) | undefined;
-let errorListener: (() => void) | undefined;
-let dataListener: (() => void) | undefined;
-let increaseFontSizeListener: (() => void) | undefined;
-let decreaseFontSizeListener: (() => void) | undefined;
-
+// --- Lifecycle ---
 onMounted(() => {
   // load settings on start
   settingsStore.load();
-  (window as any).settings.onOpen(() => { settingsOpen.value = true })
-  statusListener = window.ssh.on('ssh:status', ({ tabId, status }) => {
-    const tab = getTabById(tabId);
-    if (!tab) return;
-
-    if (status === 'connected') {
-      tab.connected = true;
-    } else if (status === 'closed') {
-      tab.connected = false;
-    }
-  });
-
-  errorListener = window.ssh.on('ssh:error', ({ tabId, message }) => {
-    const tab = getTabById(tabId);
-    if (tab) {
-      tab.connected = false;
-    }
-    const tabIndex = tabs.value.findIndex(t => t.id === tabId);
-    terminalTabRefs.value[tabIndex]?.write(`\r\n\u001b[31m*** SSH ERROR: ${message} ***\u001b[0m\r\n`);
-  });
-
-  dataListener = window.ssh.on('ssh:data', ({ tabId, data }) => {
-    const tabIndex = tabs.value.findIndex(t => t.id === tabId);
-    terminalTabRefs.value[tabIndex]?.write(data);
-  });
+  (window as any).settings.onOpen(() => { settingsOpen.value = true });
+  
+  // Setup SSH listeners
+  setupListeners(tabs);
 });
 
 onBeforeUnmount(() => {
-  if (statusListener) statusListener();
-  if (errorListener) errorListener();
-  if (dataListener) dataListener();
-  // Disconnect all tabs when the app closes
-  tabs.value.forEach(tab => handleDisconnect(tab.id));
+  cleanupListeners(tabs);
 });
 
 </script>
