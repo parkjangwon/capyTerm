@@ -36,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, watch, onMounted, onBeforeUnmount } from 'vue'
 
 interface SessionFormData {
   id?: string
@@ -92,6 +92,21 @@ watch(() => props.initialSession, (newVal) => {
     })
   }
 }, { deep: true })
+
+function onEsc(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    e.stopPropagation()
+    emit('cancel')
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onEsc)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onEsc)
+})
 </script>
 
 <style scoped>
@@ -102,7 +117,7 @@ watch(() => props.initialSession, (newVal) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1100;
 }
 .modal {
   width: 700px;

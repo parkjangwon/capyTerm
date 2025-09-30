@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-backdrop" @click.self="$emit('cancel')">
+  <div class="modal-backdrop" @click.self="$emit('cancel')" @keydown.esc.stop="$emit('cancel')">
     <div class="modal small">
       <header class="modal-header">
         <h3>{{ title || $t('settings.groupAddTitle') }}</h3>
@@ -8,7 +8,7 @@
         <div class="row add-row">
           <input v-model="folderName" :placeholder="$t('settings.groupName')" />
           <select v-model="parentId">
-            <option :value="undefined">{{ $t('settings.parentNone') }}</option>
+            <option :value="undefined">루트</option>
             <option v-for="pf in availableParents" :key="pf.id" :value="pf.id">상위: {{ pf.name }}</option>
           </select>
         </div>
@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 
 const props = defineProps<{
   title?: string
@@ -46,6 +46,21 @@ function handleSave() {
   if (!folderName.value.trim()) return
   emit('save', { name: folderName.value.trim(), parentId: parentId.value })
 }
+
+function onEsc(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    e.stopPropagation()
+    emit('cancel')
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', onEsc)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onEsc)
+})
 </script>
 
 <style scoped>
@@ -56,7 +71,7 @@ function handleSave() {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1100;
 }
 .modal {
   width: 900px;

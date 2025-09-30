@@ -65,7 +65,9 @@ const emit = defineEmits<{
   'delete-session': [id: string]
 }>()
 
-const isExpanded = ref(props.expanded ?? true)
+// Auto-expand if group has sessions or children
+const hasContent = props.sessions.length > 0
+const isExpanded = ref(props.expanded ?? hasContent)
 const menuOpen = ref(false)
 
 function toggleExpanded() {

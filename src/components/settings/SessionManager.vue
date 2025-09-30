@@ -1,6 +1,5 @@
 <template>
   <div class="section">
-    <h4>세션 그룹</h4>
     <div class="row add-row toolbar">
       <input v-model="filterText" :placeholder="$t('settings.filterPlaceholder')" />
       <span class="spacer"></span>
@@ -170,7 +169,7 @@ const rootSessions = computed(() => settings.sshSessions.filter(s => !s.folderId
 const filteredRootSessions = computed(() => {
   const q = filterText.value.trim().toLowerCase()
   if (!q) return rootSessions.value
-  return rootSessions.value.filter(s => `${s.name} ${s.user} ${s.host}`.toLowerCase().includes(q))
+  return rootSessions.value.filter(s => s.name.toLowerCase().includes(q) || `${s.user} ${s.host}`.toLowerCase().includes(q))
 })
 
 function childGroups(parentId: string | undefined) {
@@ -181,14 +180,19 @@ function filteredChildGroups(parentId: string | undefined) {
   const q = filterText.value.trim().toLowerCase()
   const list = childGroups(parentId)
   if (!q) return list
-  return list.filter(g => g.name.toLowerCase().includes(q))
+  // Filter groups by name OR if they contain matching sessions
+  return list.filter(g => {
+    if (g.name.toLowerCase().includes(q)) return true
+    const sessionsInGroup = settings.sshSessions.filter(s => s.folderId === g.id)
+    return sessionsInGroup.some(s => s.name.toLowerCase().includes(q) || `${s.user} ${s.host}`.toLowerCase().includes(q))
+  })
 }
 
 function filteredSessionsByFolderId(folderId: string) {
   const q = filterText.value.trim().toLowerCase()
   const list = settings.sshSessions.filter(s => s.folderId === folderId)
   if (!q) return list
-  return list.filter(s => `${s.name} ${s.user} ${s.host}`.toLowerCase().includes(q))
+  return list.filter(s => s.name.toLowerCase().includes(q) || `${s.user} ${s.host}`.toLowerCase().includes(q))
 }
 
 // Session actions
@@ -245,7 +249,11 @@ function cancelSessionForm() {
 }
 
 function removeSession(id: string) {
-  settings.removeSession(id)
+  const session = settings.sshSessions.find(s => s.id === id)
+  if (!session) return
+  if (confirm(`세션 "${session.name}"을(를) 삭제하시겠습니까?`)) {
+    settings.removeSession(id)
+  }
 }
 
 function cloneSession(id: string) {
@@ -280,7 +288,19 @@ function applyFolderEdit(data: { name: string, parentId?: string }) {
 }
 
 function removeFolder(id: string) {
-  settings.removeFolder(id)
+  const folder = settings.sshSessionFolders.find(f => f.id === id)
+  if (!folder) return
+  const sessionsInFolder = settings.sshSessions.filter(s => s.folderId === id)
+  const childFolders = settings.sshSessionFolders.filter(f => f.parentId === id)
+  
+  let message = `세션 그룹 "${folder.name}"을(를) 삭제하시겠습니까?`
+  if (sessionsInFolder.length > 0 || childFolders.length > 0) {
+    message += `\n\n포함된 세션 ${sessionsInFolder.length}개와 하위 그룹 ${childFolders.length}개도 함께 삭제됩니다.`
+  }
+  
+  if (confirm(message)) {
+    settings.removeFolder(id)
+  }
 }
 
 function folderParentOptions(excludeId: string) {
@@ -290,11 +310,21 @@ function folderParentOptions(excludeId: string) {
 // Add chooser
 function openAddChooser() { 
   addType.value = ''
-  addChooserOpen.value = true 
+  addChooserOpen.value = true
+  // Add ESC listener for add chooser
+  window.addEventListener('keydown', onAddChooserEsc)
 }
 
 function closeAddChooser() { 
-  addChooserOpen.value = false 
+  addChooserOpen.value = false
+  window.removeEventListener('keydown', onAddChooserEsc)
+}
+
+function onAddChooserEsc(e: KeyboardEvent) {
+  if (e.key === 'Escape' && addChooserOpen.value) {
+    e.stopPropagation()
+    closeAddChooser()
+  }
 }
 
 function confirmAdd() {
@@ -335,7 +365,7 @@ button.danger { background: #a33; color: white; border-color: #a33; }
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1100;
 }
 .modal {
   width: 900px;

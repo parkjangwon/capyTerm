@@ -1,6 +1,7 @@
 :root {
   --bg: #ffffff;
   --fg: #111111;
+  --fg-rgb: 17, 17, 17;
   --panel: #f5f5f7;
   --border: #d0d0d0;
   --input-bg: #ffffff;
@@ -10,12 +11,13 @@
 
 [data-theme="dark"] {
   --bg: #1e1e1e;
-  --fg: #f3f3f3;
-  --panel: #2a2a2a;
-  --border: #3a3a3a;
-  --input-bg: #202020;
-  --btn-bg: #2c2c2c;
-  --btn-fg: #f3f3f3;
+  --fg: #e8e8e8;
+  --fg-rgb: 232, 232, 232;
+  --panel: #2d2d2d;
+  --border: #404040;
+  --input-bg: #252525;
+  --btn-bg: #383838;
+  --btn-fg: #e8e8e8;
 }
 
 html, body, #app {
