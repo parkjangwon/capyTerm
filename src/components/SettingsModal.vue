@@ -2,23 +2,30 @@
   <div v-if="open" class="modal-backdrop" @click.self="close">
     <div class="modal">
       <header class="modal-header">
-        <h3>환경 설정</h3>
+        <h3>{{ $t('settings.title') }}</h3>
         <nav class="tabs">
-          <button :class="{active: activeTab==='ui'}" @click="activeTab='ui'">UI</button>
-          <button :class="{active: activeTab==='session'}" @click="activeTab='session'">Session</button>
+          <button :class="{active: activeTab==='ui'}" @click="activeTab='ui'">{{ $t('settings.tab.ui') }}</button>
+          <button :class="{active: activeTab==='session'}" @click="activeTab='session'">{{ $t('settings.tab.session') }}</button>
         </nav>
       </header>
       <section class="modal-body">
         <template v-if="activeTab==='ui'">
           <div class="section">
-            <h4>테마</h4>
+            <h4>{{ $t('settings.theme') }}</h4>
             <div class="row">
               <label>
-                <input type="radio" value="light" v-model="themeLocal" /> 라이트
+                <input type="radio" value="light" v-model="themeLocal" /> {{ $t('settings.light') }}
               </label>
               <label>
-                <input type="radio" value="dark" v-model="themeLocal" /> 다크
+                <input type="radio" value="dark" v-model="themeLocal" /> {{ $t('settings.dark') }}
               </label>
+            </div>
+            <div class="row">
+              <label>{{ $t('app.language') }}</label>
+              <select v-model="languageLocal" @change="onChangeLanguage">
+                <option value="ko">{{ $t('app.korean') }}</option>
+                <option value="en">{{ $t('app.english') }}</option>
+              </select>
             </div>
           </div>
         </template>
@@ -27,34 +34,34 @@
           <div class="section">
             <h4>세션 그룹</h4>
             <div class="row add-row toolbar">
-              <input v-model="filterText" placeholder="무엇이든 입력하세요." />
+              <input v-model="filterText" :placeholder="$t('settings.filterPlaceholder')" />
               <span class="spacer"></span>
-              <button @click="openAddChooser">추가</button>
+              <button @click="openAddChooser">{{ $t('app.add') }}</button>
             </div>
 
             <div v-if="showSessionForm" class="panel">
               <div class="row add-row">
-                <input v-model="sessionForm.name" placeholder="세션 이름" />
-                <input v-model="sessionForm.host" placeholder="호스트" />
-                <input v-model.number="sessionForm.port" type="number" placeholder="포트(기본 22)" />
-                <input v-model="sessionForm.user" placeholder="사용자" />
+                <input v-model="sessionForm.name" :placeholder="$t('settings.sessionName')" />
+                <input v-model="sessionForm.host" :placeholder="$t('settings.host')" />
+                <input v-model.number="sessionForm.port" type="number" :placeholder="$t('settings.port')" />
+                <input v-model="sessionForm.user" :placeholder="$t('settings.user')" />
                 <select v-model="sessionForm.authMethod">
-                  <option value="password">비밀번호</option>
-                  <option value="key">키</option>
+                  <option value="password">{{ $t('settings.password') }}</option>
+                  <option value="key">{{ $t('settings.key') }}</option>
                 </select>
                 <template v-if="sessionForm.authMethod==='password'">
-                  <input v-model="sessionForm.password" type="password" placeholder="비밀번호" />
+                  <input v-model="sessionForm.password" type="password" :placeholder="$t('settings.password')" />
                 </template>
                 <template v-else>
-                  <input v-model="sessionForm.privateKeyPath" placeholder="개인키 경로" />
-                  <input v-model="sessionForm.passphrase" type="password" placeholder="암호(선택)" />
+                  <input v-model="sessionForm.privateKeyPath" :placeholder="$t('settings.privateKeyPath')" />
+                  <input v-model="sessionForm.passphrase" type="password" :placeholder="$t('settings.passphrase')" />
                 </template>
                 <select v-model="sessionForm.folderId">
-                  <option :value="undefined">루트</option>
-                  <option v-for="f in settings.sshSessionFolders" :key="f.id" :value="f.id">{{ f.name }}</option>
+                  <option :value="undefined">{{ $t('settings.sessionGroupLabel') }}</option>
+                  <option v-for="f in settings.sshSessionFolders" :key="f.id" :value="f.id">{{ $t('app.sessionGroup') }}: {{ f.name }}</option>
                 </select>
-                <button @click="saveSession">저장</button>
-                <button class="danger" @click="cancelSessionForm">취소</button>
+                <button @click="saveSession">{{ $t('app.confirm') }}</button>
+                <button class="danger" @click="cancelSessionForm">{{ $t('app.cancel') }}</button>
               </div>
             </div>
 
@@ -64,7 +71,7 @@
                      @click="toggleFolder('root')"
                      @dragover.prevent="onDragOver"
                      @drop.prevent="onDropOnRoot">
-                  <span>{{ isOpen('root') ? 'V' : '>' }} 미 지정</span>
+                  <span>{{ isOpen('root') ? 'V' : '>' }} {{ $t('settings.root') }}</span>
                 </div>
                 <ul v-show="isOpen('root')">
                   <li v-for="s in filteredRootSessions" :key="s.id" class="list-item"
@@ -74,9 +81,9 @@
                     <div class="menu-wrap">
                       <button class="menu-btn" @click.stop="toggleSessionMenu(s.id)">…</button>
                       <div v-if="openSessionMenuId===s.id" class="menu" @click.stop>
-                        <button @click="cloneSession(s.id); closeMenus()">복제</button>
-                        <button @click="openSessionEdit(s.id); closeMenus()">수정</button>
-                        <button class="danger" @click="removeSession(s.id); closeMenus()">삭제</button>
+                        <button @click="cloneSession(s.id); closeMenus()">{{ $t('app.clone') }}</button>
+                        <button @click="openSessionEdit(s.id); closeMenus()">{{ $t('app.edit') }}</button>
+                        <button class="danger" @click="removeSession(s.id); closeMenus()">{{ $t('app.delete') }}</button>
                       </div>
                     </div>
                   </li>
@@ -88,13 +95,13 @@
                   @dragover.prevent="onDragOver"
                   @drop.prevent="onDropOnFolder(f.id)">
                 <div class="group-header" @click="toggleFolder(f.id)">
-                  <span>{{ isOpen(f.id) ? 'V' : '>' }} 세션 그룹: {{ f.name }}</span>
+                  <span>{{ isOpen(f.id) ? 'V' : '>' }} {{ $t('settings.group') }}: {{ f.name }}</span>
                   <span class="spacer"></span>
                   <div class="menu-wrap" @click.stop>
                     <button class="menu-btn" @click="toggleGroupMenu(f.id)">…</button>
                     <div v-if="openGroupMenuId===f.id" class="menu">
-                      <button @click="openFolderEdit(f.id); closeMenus()">수정</button>
-                      <button class="danger" @click="removeFolder(f.id); closeMenus()">삭제</button>
+                      <button @click="openFolderEdit(f.id); closeMenus()">{{ $t('app.edit') }}</button>
+                      <button class="danger" @click="removeFolder(f.id); closeMenus()">{{ $t('app.delete') }}</button>
                     </div>
                   </div>
                 </div>
@@ -106,9 +113,9 @@
                     <div class="menu-wrap">
                       <button class="menu-btn" @click.stop="toggleSessionMenu(s.id)">…</button>
                       <div v-if="openSessionMenuId===s.id" class="menu" @click.stop>
-                        <button @click="cloneSession(s.id); closeMenus()">복제</button>
-                        <button @click="openSessionEdit(s.id); closeMenus()">수정</button>
-                        <button class="danger" @click="removeSession(s.id); closeMenus()">삭제</button>
+                        <button @click="cloneSession(s.id); closeMenus()">{{ $t('app.clone') }}</button>
+                        <button @click="openSessionEdit(s.id); closeMenus()">{{ $t('app.edit') }}</button>
+                        <button class="danger" @click="removeSession(s.id); closeMenus()">{{ $t('app.delete') }}</button>
                       </div>
                     </div>
                   </li>
@@ -118,13 +125,13 @@
                       @dragover.prevent="onDragOver"
                       @drop.prevent="onDropOnFolder(cg.id)">
                     <div class="group-header" @click="toggleFolder(cg.id)">
-                      <span>{{ isOpen(cg.id) ? 'V' : '>' }} 세션 그룹: {{ cg.name }}</span>
+                      <span>{{ isOpen(cg.id) ? 'V' : '>' }} {{ $t('settings.group') }}: {{ cg.name }}</span>
                       <span class="spacer"></span>
                       <div class="menu-wrap" @click.stop>
                         <button class="menu-btn" @click="toggleGroupMenu(cg.id)">…</button>
                         <div v-if="openGroupMenuId===cg.id" class="menu">
-                          <button @click="openFolderEdit(cg.id); closeMenus()">수정</button>
-                          <button class="danger" @click="removeFolder(cg.id); closeMenus()">삭제</button>
+                          <button @click="openFolderEdit(cg.id); closeMenus()">{{ $t('app.edit') }}</button>
+                          <button class="danger" @click="removeFolder(cg.id); closeMenus()">{{ $t('app.delete') }}</button>
                         </div>
                       </div>
                     </div>
@@ -136,9 +143,9 @@
                           <div class="menu-wrap">
                             <button class="menu-btn" @click.stop="toggleSessionMenu(s.id)">…</button>
                             <div v-if="openSessionMenuId===s.id" class="menu" @click.stop>
-                              <button @click="cloneSession(s.id); closeMenus()">복제</button>
-                              <button @click="openSessionEdit(s.id); closeMenus()">수정</button>
-                              <button class="danger" @click="removeSession(s.id); closeMenus()">삭제</button>
+                              <button @click="cloneSession(s.id); closeMenus()">{{ $t('app.clone') }}</button>
+                              <button @click="openSessionEdit(s.id); closeMenus()">{{ $t('app.edit') }}</button>
+                              <button class="danger" @click="removeSession(s.id); closeMenus()">{{ $t('app.delete') }}</button>
                             </div>
                           </div>
                       </li>
@@ -149,13 +156,13 @@
                           @dragover.prevent="onDragOver"
                           @drop.prevent="onDropOnFolder(gg.id)">
                         <div class="group-header" @click="toggleFolder(gg.id)">
-                          <span>{{ isOpen(gg.id) ? 'V' : '>' }} 세션 그룹: {{ gg.name }}</span>
+                          <span>{{ isOpen(gg.id) ? 'V' : '>' }} {{ $t('settings.group') }}: {{ gg.name }}</span>
                           <span class="spacer"></span>
                           <div class="menu-wrap" @click.stop>
                             <button class="menu-btn" @click="toggleGroupMenu(gg.id)">…</button>
                             <div v-if="openGroupMenuId===gg.id" class="menu">
-                              <button @click="openFolderEdit(gg.id); closeMenus()">수정</button>
-                              <button class="danger" @click="removeFolder(gg.id); closeMenus()">삭제</button>
+                              <button @click="openFolderEdit(gg.id); closeMenus()">{{ $t('app.edit') }}</button>
+                              <button class="danger" @click="removeFolder(gg.id); closeMenus()">{{ $t('app.delete') }}</button>
                             </div>
                           </div>
                         </div>
@@ -167,9 +174,9 @@
                             <div class="menu-wrap">
                               <button class="menu-btn" @click.stop="toggleSessionMenu(s.id)">…</button>
                               <div v-if="openSessionMenuId===s.id" class="menu" @click.stop>
-                                <button @click="cloneSession(s.id); closeMenus()">복제</button>
-                                <button @click="editSession(s.id); toggleSessionForm(true); closeMenus()">수정</button>
-                                <button class="danger" @click="removeSession(s.id); closeMenus()">삭제</button>
+                                <button @click="cloneSession(s.id); closeMenus()">{{ $t('app.clone') }}</button>
+                                <button @click="editSession(s.id); toggleSessionForm(true); closeMenus()">{{ $t('app.edit') }}</button>
+                                <button class="danger" @click="removeSession(s.id); closeMenus()">{{ $t('app.delete') }}</button>
                               </div>
                             </div>
                           </li>
@@ -183,29 +190,29 @@
 
             <div v-if="folderEdit.id" class="panel">
               <div class="row add-row">
-                <input v-model="folderEdit.name" placeholder="세션 그룹 이름" />
+                <input v-model="folderEdit.name" :placeholder="$t('settings.groupName')" />
                 <select v-model="folderEdit.parentId">
-                  <option :value="undefined">상위: 미 지정</option>
+                  <option :value="undefined">{{ $t('settings.parentNone') }}</option>
                   <option v-for="pf in folderParentOptions(folderEdit.id)" :key="pf.id" :value="pf.id">상위: {{ pf.name }}</option>
                 </select>
-                <button @click="applyFolderEdit">저장</button>
-                <button class="danger" @click="cancelFolderEdit">취소</button>
+                <button @click="applyFolderEdit">{{ $t('app.confirm') }}</button>
+                <button class="danger" @click="cancelFolderEdit">{{ $t('app.cancel') }}</button>
               </div>
             </div>
 
             <!-- Add chooser modal -->
             <div v-if="addChooserOpen" class="modal-backdrop" @click.self="closeAddChooser">
               <div class="modal small">
-                <header class="modal-header"><h3>추가</h3></header>
+                <header class="modal-header"><h3>{{ $t('app.add') }}</h3></header>
                 <section class="modal-body">
                   <div class="row">
                     <select v-model="addType">
-                      <option disabled value="">무엇을 추가할까요?</option>
-                      <option value="session">세션</option>
-                      <option value="group">세션 그룹</option>
+                      <option disabled value="">{{ $t('settings.addWhat') }}</option>
+                      <option value="session">{{ $t('app.session') }}</option>
+                      <option value="group">{{ $t('app.sessionGroup') }}</option>
                     </select>
-                    <button @click="confirmAdd">확인</button>
-                    <button class="danger" @click="closeAddChooser">취소</button>
+                    <button @click="confirmAdd">{{ $t('app.confirm') }}</button>
+                    <button class="danger" @click="closeAddChooser">{{ $t('app.cancel') }}</button>
                   </div>
                 </section>
               </div>
@@ -214,16 +221,16 @@
             <!-- Group add/edit modal is shared via folderEdit panel above for edit; below is create form -->
             <div v-if="showGroupForm" class="modal-backdrop" @click.self="closeGroupForm">
               <div class="modal small">
-                <header class="modal-header"><h3>세션 그룹 추가</h3></header>
+                <header class="modal-header"><h3>{{ $t('settings.groupAddTitle') }}</h3></header>
                 <section class="modal-body">
                   <div class="row add-row">
-                    <input v-model="newFolderName" placeholder="세션 그룹 이름" />
+                    <input v-model="newFolderName" :placeholder="$t('settings.groupName')" />
                     <select v-model="newFolderParentId">
-                      <option :value="undefined">상위: 미 지정</option>
+                      <option :value="undefined">{{ $t('settings.parentNone') }}</option>
                       <option v-for="pf in settings.sshSessionFolders" :key="pf.id" :value="pf.id">상위: {{ pf.name }}</option>
                     </select>
-                    <button @click="addFolder">추가</button>
-                    <button class="danger" @click="closeGroupForm">취소</button>
+                    <button @click="addFolder">{{ $t('app.add') }}</button>
+                    <button class="danger" @click="closeGroupForm">{{ $t('app.cancel') }}</button>
                   </div>
                 </section>
               </div>
@@ -232,33 +239,33 @@
             <!-- Session add/edit modal -->
             <div v-if="showSessionForm" class="modal-backdrop" @click.self="cancelSessionForm">
               <div class="modal">
-                <header class="modal-header"><h3>세션 {{ sessionForm.id ? '수정' : '추가' }}</h3></header>
+                <header class="modal-header"><h3>{{ $t('settings.sessionEditTitle', { mode: sessionForm.id ? $t('settings.editMode.edit') : $t('settings.editMode.add') }) }}</h3></header>
                 <section class="modal-body">
                   <div class="row add-row">
-                    <input v-model="sessionForm.name" placeholder="세션 이름" />
-                    <input v-model="sessionForm.host" placeholder="호스트" />
-                    <input v-model.number="sessionForm.port" type="number" placeholder="포트(기본 22)" />
-                    <input v-model="sessionForm.user" placeholder="사용자" />
+                    <input v-model="sessionForm.name" :placeholder="$t('settings.sessionName')" />
+                    <input v-model="sessionForm.host" :placeholder="$t('settings.host')" />
+                    <input v-model.number="sessionForm.port" type="number" :placeholder="$t('settings.port')" />
+                    <input v-model="sessionForm.user" :placeholder="$t('settings.user')" />
                     <select v-model="sessionForm.authMethod">
-                      <option value="password">비밀번호</option>
-                      <option value="key">키</option>
+                      <option value="password">{{ $t('settings.password') }}</option>
+                      <option value="key">{{ $t('settings.key') }}</option>
                     </select>
                     <template v-if="sessionForm.authMethod==='password'">
-                      <input v-model="sessionForm.password" type="password" placeholder="비밀번호" />
+                      <input v-model="sessionForm.password" type="password" :placeholder="$t('settings.password')" />
                     </template>
                     <template v-else>
-                      <input v-model="sessionForm.privateKeyPath" placeholder="개인키 경로" />
-                      <input v-model="sessionForm.passphrase" type="password" placeholder="암호(선택)" />
+                      <input v-model="sessionForm.privateKeyPath" :placeholder="$t('settings.privateKeyPath')" />
+                      <input v-model="sessionForm.passphrase" type="password" :placeholder="$t('settings.passphrase')" />
                     </template>
                     <select v-model="sessionForm.folderId">
-                      <option :value="undefined">세션 그룹: 미 지정</option>
-                      <option v-for="f in settings.sshSessionFolders" :key="f.id" :value="f.id">세션 그룹: {{ f.name }}</option>
+                      <option :value="undefined">{{ $t('settings.sessionGroupLabel') }}</option>
+                      <option v-for="f in settings.sshSessionFolders" :key="f.id" :value="f.id">{{ $t('app.sessionGroup') }}: {{ f.name }}</option>
                     </select>
                   </div>
                 </section>
                 <footer class="modal-footer">
-                  <button @click="saveSession">저장</button>
-                  <button class="danger" @click="cancelSessionForm">취소</button>
+                  <button @click="saveSession">{{ $t('app.confirm') }}</button>
+                  <button class="danger" @click="cancelSessionForm">{{ $t('app.cancel') }}</button>
                 </footer>
               </div>
             </div>
@@ -266,7 +273,7 @@
         </template>
       </section>
       <footer class="modal-footer">
-        <button @click="applyAndClose">확인</button>
+        <button @click="applyAndClose">{{ $t('app.confirm') }}</button>
       </footer>
     </div>
   </div>
@@ -277,24 +284,32 @@
 // @ts-nocheck
 import { ref, watch, reactive, defineProps, defineEmits, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useSettingsStore } from '../stores/settings'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits(['close'])
 
 const settings = useSettingsStore()
+const { t, locale } = useI18n()
 
 const activeTab = ref<'ui' | 'session'>('ui')
 const themeLocal = ref(settings.theme)
+const languageLocal = ref(settings.language)
 watch(() => props.open, async (val: boolean) => {
   if (val && !settings.loaded) {
     await settings.load()
   }
   themeLocal.value = settings.theme
+  languageLocal.value = settings.language
   // prepare folder inputs
   folderEdits.value = Object.fromEntries(settings.sshSessionFolders.map((f: { id: string, name: string }) => [f.id, f.name]))
 })
 
 watch(themeLocal, (v: string) => settings.setTheme(v as any))
+function onChangeLanguage() {
+  settings.setLanguage(languageLocal.value as any)
+  locale.value = settings.language
+}
 
 const newFolderName = ref('')
 const newFolderParentId = ref<string | undefined>(undefined)
@@ -506,6 +521,10 @@ function onDropOnRoot() {
 
 function onEsc(e: KeyboardEvent) {
   if (e.key === 'Escape') {
+    // 우선순위: 가장 안쪽 모달부터 닫기
+    if (showSessionForm.value) { showSessionForm.value = false; return }
+    if (showGroupForm.value) { showGroupForm.value = false; return }
+    if (addChooserOpen.value) { addChooserOpen.value = false; return }
     close()
   }
 }
@@ -582,7 +601,10 @@ button.danger { background: #a33; color: white; border-color: #a33; }
 .drag-icon { opacity: 0.7; cursor: grab; }
 .menu-wrap { position: relative; }
 .menu-btn { background: transparent; border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; }
-.menu { position: absolute; right: 0; top: 120%; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 2000; }
+.menu { position: absolute; right: 0; top: 120%; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 6px; display: flex; flex-direction: row; flex-wrap: nowrap; gap: 6px; z-index: 2000; }
+/* 버튼 폭 개선: 글자 크기 기준으로 한 줄 배치 */
+.menu button { min-width: max-content; white-space: nowrap; }
+.row.add-row button, .modal-footer button { min-width: max-content; white-space: nowrap; }
 </style>
 
 

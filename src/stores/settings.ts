@@ -33,6 +33,7 @@ export interface SshSessionItem {
 
 export interface SettingsState {
   theme: ThemeMode
+  language: 'ko' | 'en'
   sshSessionFolders: SshSessionFolder[]
   sshSessions: SshSessionItem[]
   loaded: boolean
@@ -45,6 +46,7 @@ function generateId(prefix: string): string {
 export const useSettingsStore = defineStore('settings', {
   state: (): SettingsState => ({
     theme: 'dark',
+    language: 'ko',
     sshSessionFolders: [],
     sshSessions: [],
     loaded: false,
@@ -64,6 +66,7 @@ export const useSettingsStore = defineStore('settings', {
     async load() {
       const result = await (window as any).settings.read()
       this.theme = (result?.theme === 'light' ? 'light' : 'dark')
+      this.language = (result?.language === 'en' ? 'en' : 'ko')
       this.sshSessionFolders = Array.isArray(result?.sshSessionFolders) ? result.sshSessionFolders : []
       this.sshSessions = Array.isArray(result?.sshSessions) ? result.sshSessions : []
       this.loaded = true
@@ -72,6 +75,7 @@ export const useSettingsStore = defineStore('settings', {
     async save() {
       const payload = JSON.parse(JSON.stringify({
         theme: this.theme,
+        language: this.language,
         sshSessionFolders: this.sshSessionFolders,
         sshSessions: this.sshSessions,
       }))
@@ -85,6 +89,10 @@ export const useSettingsStore = defineStore('settings', {
     setTheme(theme: ThemeMode) {
       this.theme = theme
       this.applyTheme()
+      this.save()
+    },
+    setLanguage(lang: 'ko' | 'en') {
+      this.language = lang
       this.save()
     },
     applyTheme() {

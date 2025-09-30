@@ -14,10 +14,12 @@
     </div>
     <button class="new-tab-btn" @click="$emit('duplicate-tab')">❐</button>
     <button class="new-tab-btn" @click="$emit('new-tab')">+</button>
+    <button class="settings-btn" @click="$emit('open-settings')" title="Settings">⚙️</button>
   </div>
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck
 import type { PropType } from 'vue';
 
 interface Tab {
@@ -36,7 +38,7 @@ defineProps({
   },
 });
 
-defineEmits(['switch-tab', 'close-tab', 'new-tab', 'duplicate-tab']);
+defineEmits(['switch-tab', 'close-tab', 'new-tab', 'duplicate-tab', 'open-settings']);
 </script>
 
 <style scoped>
@@ -112,4 +114,19 @@ defineEmits(['switch-tab', 'close-tab', 'new-tab', 'duplicate-tab']);
 .new-tab-btn:hover {
   background-color: #4f5666;
 }
+
+.settings-btn {
+  background-color: #3a3f4b;
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  font-size: 1.1em;
+  line-height: 28px;
+  text-align: center;
+  cursor: pointer;
+  margin-left: 10px;
+}
+.settings-btn:hover { background-color: #4f5666; }
 </style>

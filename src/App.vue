@@ -1,30 +1,35 @@
 <template>
-  <div id="app-shell">
-    <header class="app-header">
-      <TabBar 
-        :tabs="tabs" 
-        :active-tab-id="activeTabId" 
-        @switch-tab="handleSwitchTab"
-        @close-tab="handleCloseTab"
-        @new-tab="handleNewTab"
-        @duplicate-tab="handleDuplicateTab"
-      />
-    </header>
-    <div class="tab-content-area">
-      <TerminalTab 
-        v-for="(tab, index) in tabs" 
-        :key="tab.id"
-        :ref="(el) => { if (el) terminalTabRefs[index] = el }"
-        :tab-id="tab.id"
-        :connected="tab.connected"
-        :connection-options="tab.connectionOptions"
-        @connect="(options) => handleConnect(tab.id, options)"
-        @disconnect="() => handleDisconnect(tab.id)"
-        v-show="tab.id === activeTabId"
-      />
-    </div>
+  <v-app>
+    <v-main>
+      <v-container fluid class="pa-0 fill-height d-flex flex-column">
+        <div class="app-header">
+          <TabBar 
+            :tabs="tabs" 
+            :active-tab-id="activeTabId" 
+            @switch-tab="handleSwitchTab"
+            @close-tab="handleCloseTab"
+            @new-tab="handleNewTab"
+            @duplicate-tab="handleDuplicateTab"
+            @open-settings="settingsOpen = true"
+          />
+        </div>
+        <div class="tab-content-area">
+          <TerminalTab 
+            v-for="(tab, index) in tabs" 
+            :key="tab.id"
+            :ref="(el) => { if (el) terminalTabRefs[index] = el }"
+            :tab-id="tab.id"
+            :connected="tab.connected"
+            :connection-options="tab.connectionOptions"
+            @connect="(options) => handleConnect(tab.id, options)"
+            @disconnect="() => handleDisconnect(tab.id)"
+            v-show="tab.id === activeTabId"
+          />
+        </div>
+      </v-container>
+    </v-main>
     <SettingsModal :open="settingsOpen" @close="settingsOpen = false" />
-  </div>
+  </v-app>
 </template>
 
 <script setup lang="ts">
@@ -209,15 +214,9 @@ html, body, #app {
   margin: 0;
   padding: 0;
   height: 100%;
-  background-color: #1e1e1e;
+  background-color: var(--v-theme-background);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
-}
-
-#app-shell {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
 }
 
 .app-header {

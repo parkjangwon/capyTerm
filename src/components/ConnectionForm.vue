@@ -1,45 +1,44 @@
 <template>
   <div id="connection-form">
-    <h2>SSH 연결</h2>
+    <h2>{{ $t('connect.title') }}</h2>
     <div class="form-grid">
-      <label>호스트:</label>
-      <input v-model="options.host" placeholder="example.com" />
+      <label>{{ $t('connect.host') }}:</label>
+      <input v-model="options.host" :placeholder="$t('connect.host')" />
       
-      <label>포트:</label>
+      <label>{{ $t('connect.port') }}:</label>
       <input v-model.number="options.port" type="number" placeholder="22" />
       
-      <label>사용자:</label>
+      <label>{{ $t('connect.user') }}:</label>
       <input v-model="options.username" placeholder="user" />
 
-      <label>인증 방식:</label>
+      <label>{{ $t('connect.auth') }}:</label>
       <div class="auth-method">
         <input type="radio" id="password" value="password" v-model="options.authMethod">
-        <label for="password">비밀번호</label>
+        <label for="password">{{ $t('connect.password') }}</label>
         <input type="radio" id="privatekey" value="privatekey" v-model="options.authMethod">
-        <label for="privatekey">개인키</label>
+        <label for="privatekey">{{ $t('connect.privateKey') }}</label>
       </div>
 
       <template v-if="options.authMethod === 'password'">
-        <label>비밀번호:</label>
+        <label>{{ $t('connect.password') }}:</label>
         <input v-model="options.password" type="password" @keyup.enter="onConnect" />
       </template>
 
       <template v-if="options.authMethod === 'privatekey'">
-        <label>개인키:</label>
+        <label>{{ $t('connect.privateKey') }}:</label>
         <input type="file" @change="handleFileSelect" />
-        <label>암호:</label>
-        <input v-model="options.passphrase" type="password" placeholder="(선택 사항)" @keyup.enter="onConnect"/>
+        <label>{{ $t('connect.passphrase') }}:</label>
+        <input v-model="options.passphrase" type="password" :placeholder="$t('connect.optional')" @keyup.enter="onConnect"/>
       </template>
     </div>
-    <button @click="onConnect">연결</button>
-    <p v-if="error" class="error-message">{{ error }}</p>
+    <button @click="onConnect">{{ $t('connect.connect') }}</button>
+    <p v-if="error" class="error-message">{{ $t(error) }}</p>
   </div>
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck
 import { reactive, ref } from 'vue';
-
-import { defineProps } from 'vue';
 
 const props = defineProps<{ defaultOptions?: any }>();
 const emit = defineEmits(['connect']);
@@ -72,7 +71,7 @@ function handleFileSelect(event: Event) {
 function onConnect() {
   error.value = '';
   if (!options.host || !options.username) {
-    error.value = '호스트와 사용자 이름을 입력해주세요.';
+    error.value = 'connect.errorRequired';
     return;
   }
 
@@ -86,7 +85,7 @@ function onConnect() {
     connectionOptions.password = options.password;
   } else {
     if (!options.privateKey) {
-      error.value = '개인키 파일을 선택해주세요.';
+      error.value = 'connect.errorKey';
       return;
     }
     connectionOptions.privateKey = options.privateKey;

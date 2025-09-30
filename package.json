@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "pinia": "^2.2.6",
     "ssh2": "^1.17.0",
     "vue": "^3.4.21",
-    "pinia": "^2.2.6",
+    "vue-i18n": "^11.1.12",
+    "vuetify": "^3.10.3",
     "xterm": "^5.3.0",
     "xterm-addon-fit": "^0.8.0"
   },
@@ -21,10 +24,12 @@
     "@vitejs/plugin-vue": "^5.0.4",
     "electron": "^30.0.1",
     "electron-builder": "^24.13.3",
+    "sass": "^1.93.2",
     "typescript": "^5.2.2",
     "vite": "^5.1.6",
     "vite-plugin-electron": "^0.28.6",
     "vite-plugin-electron-renderer": "^0.14.5",
+    "vite-plugin-vuetify": "^2.1.2",
     "vue-tsc": "^2.0.26"
   },
   "main": "dist-electron/main.js"
