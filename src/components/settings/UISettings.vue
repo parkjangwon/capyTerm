@@ -16,6 +16,14 @@
         <option value="en">{{ $t('app.english') }}</option>
       </select>
     </div>
+    <div class="row">
+      <label>{{ $t('settings.font') }}</label>
+      <input type="text" v-model="fontLocal" @input="onChangeFont" :placeholder="$t('settings.fontPlaceholder')" />
+    </div>
+    <div class="row">
+      <label>{{ $t('settings.fontSize') }}</label>
+      <input type="text" v-model="fontSizeLocal" @input="onChangeFontSize" :placeholder="$t('settings.fontSizePlaceholder')" />
+    </div>
   </div>
 </template>
 
@@ -29,6 +37,8 @@ const { locale } = useI18n()
 
 const themeLocal = ref(settings.theme)
 const languageLocal = ref(settings.language)
+const fontLocal = ref(settings.font)
+const fontSizeLocal = ref(settings.fontSize)
 
 watch(themeLocal, (v: string) => settings.setTheme(v as any))
 
@@ -37,7 +47,15 @@ function onChangeLanguage() {
   locale.value = settings.language
 }
 
-defineExpose({ themeLocal, languageLocal })
+function onChangeFont() {
+  settings.setFont(fontLocal.value)
+}
+
+function onChangeFontSize() {
+  settings.setFontSize(fontSizeLocal.value)
+}
+
+defineExpose({ themeLocal, languageLocal, fontLocal, fontSizeLocal })
 </script>
 
 <style scoped>

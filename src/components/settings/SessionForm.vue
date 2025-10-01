@@ -77,7 +77,8 @@ const session = reactive<SessionFormData>({
 
 watch(() => props.initialSession, (newVal) => {
   if (newVal) {
-    Object.assign(session, {
+    // Create default values first, then override with newVal
+    const defaults: SessionFormData = {
       id: undefined,
       name: '',
       host: '',
@@ -87,9 +88,11 @@ watch(() => props.initialSession, (newVal) => {
       password: '',
       privateKeyPath: '',
       passphrase: '',
-      folderId: undefined,
-      ...newVal
-    })
+      folderId: undefined
+    }
+    // Merge newVal into defaults, preserving id if it exists
+    const merged = { ...defaults, ...newVal }
+    Object.assign(session, merged)
   }
 }, { deep: true })
 

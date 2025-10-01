@@ -34,6 +34,8 @@ export interface SshSessionItem {
 export interface SettingsState {
   theme: ThemeMode
   language: 'ko' | 'en'
+  font: string
+  fontSize: string
   sshSessionFolders: SshSessionFolder[]
   sshSessions: SshSessionItem[]
   loaded: boolean
@@ -47,6 +49,8 @@ export const useSettingsStore = defineStore('settings', {
   state: (): SettingsState => ({
     theme: 'dark',
     language: 'ko',
+    font: 'monospace',
+    fontSize: '14px',
     sshSessionFolders: [],
     sshSessions: [],
     loaded: false,
@@ -67,6 +71,8 @@ export const useSettingsStore = defineStore('settings', {
       const result = await (window as any).settings.read()
       this.theme = (result?.theme === 'light' ? 'light' : 'dark')
       this.language = (result?.language === 'en' ? 'en' : 'ko')
+      this.font = result?.font || 'monospace'
+      this.fontSize = result?.fontSize || '14px'
       this.sshSessionFolders = Array.isArray(result?.sshSessionFolders) ? result.sshSessionFolders : []
       this.sshSessions = Array.isArray(result?.sshSessions) ? result.sshSessions : []
       this.loaded = true
@@ -76,6 +82,8 @@ export const useSettingsStore = defineStore('settings', {
       const payload = JSON.parse(JSON.stringify({
         theme: this.theme,
         language: this.language,
+        font: this.font,
+        fontSize: this.fontSize,
         sshSessionFolders: this.sshSessionFolders,
         sshSessions: this.sshSessions,
       }))
@@ -93,6 +101,14 @@ export const useSettingsStore = defineStore('settings', {
     },
     setLanguage(lang: 'ko' | 'en') {
       this.language = lang
+      this.save()
+    },
+    setFont(font: string) {
+      this.font = font
+      this.save()
+    },
+    setFontSize(fontSize: string) {
+      this.fontSize = fontSize
       this.save()
     },
     applyTheme() {
@@ -126,9 +142,24 @@ export const useSettingsStore = defineStore('settings', {
     removeFolder(id: string) {
       const removed = this.sshSessionFolders.find(x => x.id === id)
       const parentId = removed?.parentId
-      this.sshSessionFolders = this.sshSessionFolders.filter(x => x.id !== id)
-      this.sshSessionFolders = this.sshSessionFolders.map(x => (x.parentId === id ? { ...x, parentId } : x))
-      this.sshSessions = this.sshSessions.map(s => (s.folderId === id ? { ...s, folderId: parentId } : s))
+      
+      // Recursively collect all folder IDs to be deleted
+      const foldersToDelete = new Set<string>([id])
+      const collectChildFolders = (folderId: string) => {
+        const children = this.sshSessionFolders.filter(f => f.parentId === folderId)
+        children.forEach(child => {
+          foldersToDelete.add(child.id)
+          collectChildFolders(child.id)
+        })
+      }
+      collectChildFolders(id)
+      
+      // Remove all folders in the hierarchy
+      this.sshSessionFolders = this.sshSessionFolders.filter(x => !foldersToDelete.has(x.id))
+      
+      // Remove all sessions in deleted folders
+      this.sshSessions = this.sshSessions.filter(s => !s.folderId || !foldersToDelete.has(s.folderId))
+      
       this.save()
     },
     upsertSession(session: Partial<SshSessionItem> & { name: string, host: string, user: string, auth: SshAuth }) {

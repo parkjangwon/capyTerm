@@ -18,7 +18,7 @@
       </div>
       <div v-if="isFolder" class="group-actions" @click.stop>
         <button class="action-btn" @click="toggleMenu">⋯</button>
-        <div v-if="menuOpen" class="action-menu">
+        <div v-if="menuOpen" class="action-menu" :class="{ 'menu-above': menuAbove }" ref="menuRef">
           <button @click="handleAction('edit')">편집</button>
           <button class="danger" @click="handleAction('delete')">삭제</button>
         </div>
@@ -84,13 +84,25 @@ const emit = defineEmits<{
 const hasContent = computed(() => props.sessions.length > 0)
 const isExpanded = ref(hasContent.value)
 const menuOpen = ref(false)
+const menuRef = ref<HTMLElement | null>(null)
+const menuAbove = ref(false)
 
 function toggleExpanded() {
   isExpanded.value = !isExpanded.value
 }
 
-function toggleMenu() {
+function toggleMenu(event: MouseEvent) {
   menuOpen.value = !menuOpen.value
+  
+  if (menuOpen.value) {
+    // Check if menu would overflow viewport
+    const target = event.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    const menuHeight = 80 // Approximate menu height
+    const spaceBelow = window.innerHeight - rect.bottom
+    
+    menuAbove.value = spaceBelow < menuHeight + 10
+  }
 }
 
 function handleAction(action: 'edit' | 'delete') {
@@ -197,6 +209,11 @@ function handleAction(action: 'edit' | 'delete') {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.action-menu.menu-above {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .action-menu button {
