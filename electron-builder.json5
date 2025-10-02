@@ -4,6 +4,7 @@
   "appId": "com.electron.capyterm",
   "asar": true,
   "productName": "capyTerm",
+  "copyright": "Copyright © 2025 parkjangwon",
   "directories": {
     "output": "release/${version}"
   },

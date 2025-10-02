@@ -2,7 +2,9 @@
   "name": "capyterm",
   "productName": "capyTerm",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "author": "parkjangwon",
+  "repository": "https://github.com/parkjangwon/capyTerm",
   "type": "module",
   "scripts": {
     "dev": "vite",
