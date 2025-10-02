@@ -1,111 +1,85 @@
-import { ref, nextTick } from 'vue'
-
-export interface Tab {
-  id: number
-  name: string
-  connected: boolean
-  connectionOptions: {
-    host: string
-    port: number
-    username: string
-    [key: string]: any
-  }
-}
+import { ref, nextTick } from 'vue';
 
 export function useTabManager() {
-  let tabCounter = 1
-  const tabs = ref<Tab[]>([
-    {
-      id: 1,
-      name: 'Tab 1',
+  const tabs = ref<any[]>([]);
+  const activeTabId = ref<number | null>(null);
+  let nextTabId = 1;
+
+  const getTabById = (id: number) => {
+    return tabs.value.find(t => t.id === id);
+  };
+
+  const updateTabNames = () => {
+    tabs.value.forEach((tab, index) => {
+      tab.name = `Terminal ${index + 1}`;
+    });
+  };
+
+  const handleNewTab = () => {
+    const newId = nextTabId++;
+    const newTab = {
+      id: newId,
+      name: ``, // Will be set by updateTabNames
+      type: 'terminal',
       connected: false,
-      connectionOptions: { host: '', port: 22, username: '' }
-    }
-  ])
-  const activeTabId = ref(1)
+      connectionOptions: {},
+    };
+    tabs.value.push(newTab);
+    updateTabNames();
+    activeTabId.value = newTab.id;
+  };
 
-  function getTabById(tabId: number) {
-    return tabs.value.find(t => t.id === tabId)
-  }
+  const handleSwitchTab = (id: number) => {
+    activeTabId.value = id;
+  };
 
-  function getActiveTab() {
-    return getTabById(activeTabId.value)
-  }
+  const switchToNextTab = () => {
+    if (tabs.value.length < 2) return;
+    const currentIndex = tabs.value.findIndex(t => t.id === activeTabId.value);
+    const nextIndex = (currentIndex + 1) % tabs.value.length;
+    activeTabId.value = tabs.value[nextIndex].id;
+  };
 
-  function handleNewTab(optionsToClone: any = {}) {
-    tabCounter++
-    const newTab: Tab = {
-      id: tabCounter,
-      name: `Tab ${tabCounter}`,
-      connected: false,
-      connectionOptions: {
-        host: '',
-        port: 22,
-        username: '',
-        ...optionsToClone
-      }
-    }
-    tabs.value.push(newTab)
-    activeTabId.value = newTab.id
-    return newTab
-  }
+  const switchToPreviousTab = () => {
+    if (tabs.value.length < 2) return;
+    const currentIndex = tabs.value.findIndex(t => t.id === activeTabId.value);
+    const previousIndex = (currentIndex - 1 + tabs.value.length) % tabs.value.length;
+    activeTabId.value = tabs.value[previousIndex].id;
+  };
 
-  function handleDuplicateTab(onDuplicate?: (originalId: number, newId: number) => void) {
-    const activeTab = getActiveTab()
-    if (!activeTab) return
+  const handleCloseTab = (id: number) => {
+    const index = tabs.value.findIndex(t => t.id === id);
+    if (index === -1) return;
 
-    tabCounter++
-    const newTab: Tab = {
-      id: tabCounter,
-      name: `Tab ${tabCounter}`,
-      connected: activeTab.connected,
-      connectionOptions: { ...activeTab.connectionOptions }
-    }
-    tabs.value.push(newTab)
-    activeTabId.value = newTab.id
-
-    if (activeTab.connected && onDuplicate) {
-      nextTick(() => {
-        onDuplicate(activeTab.id, newTab.id)
-      })
-    }
-  }
-
-  function handleSwitchTab(tabId: number) {
-    activeTabId.value = tabId
-  }
-
-  function handleCloseTab(tabId: number, onDisconnect?: (tabId: number) => void) {
-    const index = tabs.value.findIndex(t => t.id === tabId)
-    if (index === -1) return
-
-    // Disconnect before closing
-    if (onDisconnect) {
-      onDisconnect(tabId)
+    // Determine the next active tab *before* closing
+    if (activeTabId.value === id) {
+      const nextActiveTab = tabs.value[index + 1] || tabs.value[index - 1];
+      activeTabId.value = nextActiveTab?.id || null;
     }
 
-    // If closing the active tab, decide which tab to switch to
-    if (activeTabId.value === tabId) {
-      const newActiveTab = tabs.value[index - 1] || tabs.value[index + 1]
-      activeTabId.value = newActiveTab ? newActiveTab.id : 0
-    }
+    // Remove the tab
+    tabs.value.splice(index, 1);
 
-    tabs.value.splice(index, 1)
+    // Update names of remaining tabs
+    updateTabNames();
 
-    // If all tabs are closed, create a new default one
+    // If no tabs are left, create a new one
     if (tabs.value.length === 0) {
-      nextTick(() => handleNewTab())
+      nextTick(() => handleNewTab());
     }
-  }
+  };
+
+  // Initialize with a single tab
+  handleNewTab();
 
   return {
     tabs,
     activeTabId,
     getTabById,
-    getActiveTab,
     handleNewTab,
-    handleDuplicateTab,
     handleSwitchTab,
-    handleCloseTab
-  }
+    handleCloseTab,
+    switchToNextTab,
+    switchToPreviousTab,
+  };
 }

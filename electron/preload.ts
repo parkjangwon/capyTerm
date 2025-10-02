@@ -1,37 +1,39 @@
 import { ipcRenderer, contextBridge } from 'electron';
 
-const validChannels = ['ssh:data', 'ssh:status', 'ssh:error', 'settings:open'];
-
 contextBridge.exposeInMainWorld('ssh', {
   connect: (tabId: number, options: any) => ipcRenderer.send('ssh:connect', { tabId, options }),
   sendData: (tabId: number, data: string) => ipcRenderer.send('ssh:data', { tabId, data }),
-  resize: (tabId: number, size: { rows: number, cols: number }) => ipcRenderer.send('ssh:resize', { tabId, ...size }),
+  resize: (tabId: number, size: { rows: number, cols: number }) => ipcRenderer.send('ssh:resize', { tabId, size }),
   disconnect: (tabId: number) => ipcRenderer.send('ssh:disconnect', { tabId }),
-  duplicateSession: (originalTabId: number, newTabId: number) => ipcRenderer.send('ssh:duplicate-session', { originalTabId, newTabId }),
-  on: (channel: string, func: (...args: any[]) => void) => {
-    if (validChannels.includes(channel)) {
-      // Deliberately strip event as it includes `sender`
-      const subscription = (event: any, ...args: any[]) => func(...args);
-      ipcRenderer.on(channel, subscription);
-      return () => {
-        ipcRenderer.removeListener(channel, subscription);
-      };
-    }
+  
+  onData: (func: (args: {tabId: number, data: string}) => void) => {
+    const subscription = (_: any, args: {tabId: number, data: string}) => func(args);
+    ipcRenderer.on('ssh:data', subscription);
+    return () => ipcRenderer.removeListener('ssh:data', subscription);
   },
-    removeAllListeners: (channel: string) => {
-      if (validChannels.includes(channel)) {
-        ipcRenderer.removeAllListeners(channel);
-      }
-    },
-  });
 
-contextBridge.exposeInMainWorld('settings', {
-  read: () => ipcRenderer.invoke('settings:read'),
-  write: (settings: any) => ipcRenderer.invoke('settings:write', settings),
-  path: () => ipcRenderer.invoke('settings:path'),
-  onOpen: (handler: () => void) => {
-    const subscription = () => handler()
-    ipcRenderer.on('settings:open', subscription)
-    return () => ipcRenderer.removeListener('settings:open', subscription)
-  }
+  onConnected: (func: (args: {tabId: number}) => void) => {
+    const subscription = (_: any, args: {tabId: number}) => func(args);
+    ipcRenderer.on('ssh:connected', subscription);
+    return () => ipcRenderer.removeListener('ssh:connected', subscription);
+  },
+
+  onDisconnected: (func: (args: {tabId: number}) => void) => {
+    const subscription = (_: any, args: {tabId: number}) => func(args);
+    ipcRenderer.on('ssh:disconnected', subscription);
+    return () => ipcRenderer.removeListener('ssh:disconnected', subscription);
+  },
+
+  onError: (func: (args: {tabId: number, error: string}) => void) => {
+    const subscription = (_: any, args: {tabId: number, error: string}) => func(args);
+    ipcRenderer.on('ssh:error', subscription);
+    return () => ipcRenderer.removeListener('ssh:error', subscription);
+  },
+
+  removeAllListeners: () => {
+    ipcRenderer.removeAllListeners('ssh:data');
+    ipcRenderer.removeAllListeners('ssh:connected');
+    ipcRenderer.removeAllListeners('ssh:disconnected');
+    ipcRenderer.removeAllListeners('ssh:error');
+  },
 });

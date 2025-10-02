@@ -1,13 +1,11 @@
-import { app, BrowserWindow, ipcMain, Menu, shell, safeStorage } from 'electron';
-import { createRequire } from 'node:module'
+import { app, BrowserWindow, ipcMain, Menu, shell } from 'electron';
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
-import { Client } from 'ssh2'
+import { Client as SshClient } from 'ssh2'
+import type { Client, ClientChannel } from 'ssh2'
 
 app.setName('capyTerm')
-
-const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 process.env.APP_ROOT = path.join(__dirname, '..')
@@ -18,10 +16,11 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
-let win: BrowserWindow | null
+const windows = new Set<BrowserWindow>()
+const sshConnections = new Map<string, { client: Client, stream: ClientChannel | null }>();
 
 function createWindow() {
-  win = new BrowserWindow({
+  const win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
@@ -29,6 +28,21 @@ function createWindow() {
       nodeIntegration: false,
     },
   })
+
+  windows.add(win);
+
+  win.on('closed', () => {
+    const winId = win.id;
+    // Close all SSH connections associated with this window
+    for (const key of sshConnections.keys()) {
+      if (key.startsWith(`${winId}-`)) {
+        const conn = sshConnections.get(key);
+        conn?.client.end();
+        sshConnections.delete(key);
+      }
+    }
+    windows.delete(win);
+  });
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
@@ -40,82 +54,28 @@ function createWindow() {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
-    win = null
   }
 })
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (windows.size === 0) {
     createWindow()
   }
 })
 
-class SshSession {
-  client: Client;
-  stream: Client.Shell | null = null;
-  tabs: Set<number>;
-
-  constructor(initialTabId: number, options: any) {
-    this.tabs = new Set([initialTabId]);
-    this.client = new Client();
-
-    this.client.on('ready', () => {
-      this.sendStatusToAll('connected');
-
-      this.client.shell((err, stream) => {
-        if (err) {
-          this.sendErrorToAll(err.message);
-          return;
-        }
-        this.stream = stream;
-        this.stream.on('data', (data) => this.sendDataToAll(data.toString()));
-        this.stream.on('close', () => this.closeSession());
-        this.stream.stderr.on('data', (data) => this.sendErrorToAll(data.toString()));
-      });
-    }).on('error', (err) => {
-      this.sendErrorToAll(err.message);
-      this.closeSession();
-    }).on('close', () => {
-      this.closeSession();
-    }).connect(options);
-  }
-
-  addTab(tabId: number) {
-    this.tabs.add(tabId);
-  }
-
-  removeTab(tabId: number) {
-    this.tabs.delete(tabId);
-    if (this.tabs.size === 0) {
-      this.client.end();
+function closeSshSession(winId: number, tabId: number) {
+  const sessionKey = `${winId}-${tabId}`;
+  const conn = sshConnections.get(sessionKey);
+  if (conn) {
+    if (conn.stream) {
+      conn.stream.close();
     }
-  }
-
-  closeSession() {
-    this.sendStatusToAll('closed');
-    this.tabs.forEach(tabId => sessions.delete(tabId));
-  }
-
-  sendDataToAll(data: string) {
-    this.tabs.forEach(tabId => {
-      win?.webContents.send('ssh:data', { tabId, data });
-    });
-  }
-
-  sendStatusToAll(status: string) {
-    this.tabs.forEach(tabId => {
-      win?.webContents.send('ssh:status', { tabId, status });
-    });
-  }
-
-  sendErrorToAll(message: string) {
-    this.tabs.forEach(tabId => {
-      win?.webContents.send('ssh:error', { tabId, message });
-    });
+    conn.client.end();
+    sshConnections.delete(sessionKey);
+    const win = BrowserWindow.fromId(winId);
+    win?.webContents.send('ssh:disconnected', { tabId });
   }
 }
-
-const sessions = new Map<number, SshSession>();
 
 app.whenReady().then(() => {
   if (process.platform === 'darwin') {
@@ -123,19 +83,12 @@ app.whenReady().then(() => {
   }
   createWindow()
 
-  // ---- Application Menu with Preferences (CmdOrCtrl+,) ----
   const isMac = process.platform === 'darwin'
   const template: any[] = [
     ...(isMac ? [{
       label: app.getName(),
       submenu: [
-        {
-          label: 'Preferences…',
-          accelerator: 'CmdOrCtrl+,',
-          click: () => {
-            win?.webContents.send('settings:open')
-          }
-        },
+        { role: 'about' },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -149,13 +102,12 @@ app.whenReady().then(() => {
     {
       label: 'File',
       submenu: [
-        ...(isMac ? [] : [{
-          label: 'Preferences…',
-          accelerator: 'CmdOrCtrl+,',
-          click: () => {
-            win?.webContents.send('settings:open')
-          }
-        }]),
+        { 
+          label: 'New Window',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => createWindow()
+        },
+        { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' }
       ]
     },
@@ -168,17 +120,6 @@ app.whenReady().then(() => {
         { role: 'cut' },
         { role: 'copy' },
         { role: 'paste' },
-        ...(isMac ? [
-          { role: 'pasteAndMatchStyle' },
-          { role: 'delete' },
-          { role: 'selectAll' },
-          { type: 'separator' },
-          { label: 'Speech', submenu: [{ role: 'startSpeaking' }, { role: 'stopSpeaking' }] }
-        ] : [
-          { role: 'delete' },
-          { type: 'separator' },
-          { role: 'selectAll' }
-        ])
       ]
     },
     {
@@ -200,7 +141,7 @@ app.whenReady().then(() => {
         {
           label: 'Learn More',
           click: async () => {
-            await shell.openExternal('https://www.electronjs.org')
+            await shell.openExternal('https://github.com/pjwooo/capyTerm')
           }
         }
       ]
@@ -209,114 +150,72 @@ app.whenReady().then(() => {
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
 
-  ipcMain.on('ssh:connect', (_, { tabId, options }) => {
-    if (sessions.has(tabId)) {
-      sessions.get(tabId)?.removeTab(tabId);
+  ipcMain.on('ssh:connect', (event, { tabId, options }) => {
+    const win = event.sender.getOwnerBrowserWindow();
+    if (!win) return;
+    const winId = win.id;
+    const sessionKey = `${winId}-${tabId}`;
+
+    if (sshConnections.has(sessionKey)) {
+      closeSshSession(winId, tabId);
     }
-    const session = new SshSession(tabId, options);
-    sessions.set(tabId, session);
-  });
+    
+    const client = new SshClient();
+    const connectionOptions = { ...options };
 
-  ipcMain.on('ssh:duplicate-session', (_, { originalTabId, newTabId }) => {
-    const session = sessions.get(originalTabId);
-    if (session) {
-      session.addTab(newTabId);
-      sessions.set(newTabId, session);
-      session.sendStatusToAll('connected');
-    }
-  });
-
-  ipcMain.on('ssh:data', (_, { tabId, data }) => {
-    sessions.get(tabId)?.stream?.write(data);
-  });
-
-  ipcMain.on('ssh:resize', (_, { tabId, rows, cols }) => {
-    sessions.get(tabId)?.stream?.setWindow(rows, cols, 90, 90);
-  });
-
-  ipcMain.on('ssh:disconnect', (_, { tabId }) => {
-    const session = sessions.get(tabId);
-    if (session) {
-      session.removeTab(tabId);
-    }
-  });
-
-  // ---- Settings file read/write handlers ----
-  // Store settings in user's home directory
-  const homeSettingsPath = path.join(app.getPath('home'), 'capyTermSetting.json')
-  const legacySettingsPath = path.join(app.getPath('userData'), 'capyTermSetting.json')
-  // One-time migration from legacy location to home directory
-  try {
-    if (fs.existsSync(legacySettingsPath) && !fs.existsSync(homeSettingsPath)) {
-      fs.copyFileSync(legacySettingsPath, homeSettingsPath)
-    }
-  } catch {}
-  const settingsFilePath = homeSettingsPath
-
-  function readSettings(): any {
-    try {
-      if (!fs.existsSync(settingsFilePath)) {
-        const defaults = {
-          theme: 'dark',
-          sshSessionFolders: [],
-          sshSessions: []
+    if (connectionOptions.privateKeyPath) {
+      try {
+        let keyPath = connectionOptions.privateKeyPath;
+        if (keyPath.startsWith('~/')) {
+          keyPath = path.join(app.getPath('home'), keyPath.slice(2));
         }
-        fs.writeFileSync(settingsFilePath, JSON.stringify(defaults, null, 2), 'utf-8')
-        return defaults
+        connectionOptions.privateKey = fs.readFileSync(keyPath, 'utf8');
+      } catch (err: any) {
+        win.webContents.send('ssh:error', { tabId, error: `Failed to read private key: ${err.message}` });
+        return;
       }
-      const raw = fs.readFileSync(settingsFilePath, 'utf-8')
-      const parsed = JSON.parse(raw)
-      // Decrypt any safeStorage fields for in-memory use
-      if (Array.isArray(parsed.sshSessions)) {
-        parsed.sshSessions = parsed.sshSessions.map((s: any) => {
-          if (s.auth && s.auth.method === 'password' && s.auth.password && s.auth.password.__encrypted) {
-            try {
-              const decrypted = safeStorage.decryptString(Buffer.from(s.auth.password.data, 'base64'))
-              return { ...s, auth: { ...s.auth, password: decrypted, __encrypted: false } }
-            } catch {
-              return { ...s, auth: { ...s.auth, password: '', __encrypted: false } }
-            }
-          }
-          return s
-        })
-      }
-      return parsed
-    } catch (e) {
-      return { theme: 'dark', sshSessionFolders: [], sshSessions: [] }
     }
-  }
 
-  function writeSettings(settings: any) {
-    const toPersist = JSON.parse(JSON.stringify(settings))
-    // Encrypt password fields before persisting
-    if (Array.isArray(toPersist.sshSessions)) {
-      toPersist.sshSessions = toPersist.sshSessions.map((s: any) => {
-        if (s.auth && s.auth.method === 'password' && typeof s.auth.password === 'string' && s.auth.password.length > 0) {
-          try {
-            const encrypted = safeStorage.encryptString(s.auth.password)
-            return { ...s, auth: { ...s.auth, password: { __encrypted: true, data: Buffer.from(encrypted).toString('base64') } } }
-          } catch {
-            return { ...s, auth: { ...s.auth, password: '' } }
-          }
+    client.on('ready', () => {
+      win.webContents.send('ssh:connected', { tabId });
+      client.shell((err, stream) => {
+        if (err) {
+          win.webContents.send('ssh:error', { tabId, error: err.message });
+          return;
         }
-        return s
-      })
+        sshConnections.set(sessionKey, { client, stream });
+        stream.on('data', (data: Buffer) => win.webContents.send('ssh:data', { tabId, data: data.toString() }));
+        stream.on('close', () => closeSshSession(winId, tabId));
+        stream.stderr.on('data', (data: Buffer) => win.webContents.send('ssh:error', { tabId, error: data.toString() }));
+      });
+    }).on('error', (err) => {
+      win.webContents.send('ssh:error', { tabId, error: err.message });
+      closeSshSession(winId, tabId);
+    }).on('close', () => {
+      closeSshSession(winId, tabId);
+    }).connect(connectionOptions);
+  });
+
+  ipcMain.on('ssh:data', (event, { tabId, data }) => {
+    const winId = event.sender.getOwnerBrowserWindow()?.id;
+    if (winId) {
+      const sessionKey = `${winId}-${tabId}`;
+      sshConnections.get(sessionKey)?.stream?.write(data);
     }
-    fs.writeFileSync(settingsFilePath, JSON.stringify(toPersist, null, 2), 'utf-8')
-  }
+  });
 
-  ipcMain.handle('settings:read', () => {
-    return readSettings()
-  })
-
-  ipcMain.handle('settings:write', (_, settings: any) => {
-    try {
-      writeSettings(settings)
-      return { ok: true, path: settingsFilePath }
-    } catch (e: any) {
-      return { ok: false, error: e?.message || String(e), path: settingsFilePath }
+  ipcMain.on('ssh:resize', (event, { tabId, size }) => {
+    const winId = event.sender.getOwnerBrowserWindow()?.id;
+    if (winId) {
+      const sessionKey = `${winId}-${tabId}`;
+      sshConnections.get(sessionKey)?.stream?.setWindow(size.rows, size.cols, 90, 90);
     }
-  })
+  });
 
-  ipcMain.handle('settings:path', () => settingsFilePath)
+  ipcMain.on('ssh:disconnect', (event, { tabId }) => {
+    const winId = event.sender.getOwnerBrowserWindow()?.id;
+    if (winId) {
+      closeSshSession(winId, tabId);
+    }
+  });
 });

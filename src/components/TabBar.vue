@@ -1,5 +1,5 @@
 <template>
-  <div class="tab-bar">
+  <div class="kitty-tab-bar">
     <div class="tabs">
       <div 
         v-for="tab in tabs" 
@@ -12,14 +12,10 @@
         <button class="close-tab-btn" @click.stop="$emit('close-tab', tab.id)">×</button>
       </div>
     </div>
-    <button class="new-tab-btn" @click="$emit('duplicate-tab')">❐</button>
-    <button class="new-tab-btn" @click="$emit('new-tab')">+</button>
-    <button class="settings-btn" @click="$emit('open-settings')" title="Settings">⚙️</button>
   </div>
 </template>
 
 <script setup lang="ts">
-// @ts-nocheck
 import type { PropType } from 'vue';
 
 interface Tab {
@@ -29,24 +25,24 @@ interface Tab {
 
 defineProps({
   tabs: {
-    type: Array as PropType<Tab[]>,
+    type: Array as PropType<Tab[]|any[]|null>,
     required: true,
   },
   activeTabId: {
-    type: Number,
+    type: Number as PropType<number | null>,
     required: true,
   },
 });
 
-defineEmits(['switch-tab', 'close-tab', 'new-tab', 'duplicate-tab', 'open-settings']);
+defineEmits(['switch-tab', 'close-tab']);
 </script>
 
 <style scoped>
-.tab-bar {
+.kitty-tab-bar {
   display: flex;
   align-items: center;
-  background-color: #282c34;
-  padding: 5px 10px;
+  background-color: #1e1e1e; /* Same as terminal background */
+  padding: 4px 8px;
   flex-shrink: 0;
 }
 
@@ -58,75 +54,39 @@ defineEmits(['switch-tab', 'close-tab', 'new-tab', 'duplicate-tab', 'open-settin
 .tab-item {
   display: flex;
   align-items: center;
-  padding: 8px 15px;
-  margin-right: 5px;
-  background-color: #3a3f4b;
-  color: #abb2bf;
-  border-radius: 5px 5px 0 0;
+  padding: 4px 12px;
+  margin-right: 4px;
+  color: #888;
   cursor: pointer;
-  transition: background-color 0.2s;
-  position: relative;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
 .tab-item.active {
-  background-color: #1e1e1e;
-  color: white;
+  color: #fff;
+  background-color: #333;
 }
 
 .tab-item:hover {
-  background-color: #4f5666;
-}
-
-.tab-item.active:hover {
-  background-color: #1e1e1e;
+  color: #fff;
 }
 
 .close-tab-btn {
   background: none;
   border: none;
-  color: #abb2bf;
-  margin-left: 10px;
+  color: #888;
+  margin-left: 8px;
   cursor: pointer;
-  font-size: 1.2em;
-  padding: 0 5px;
+  font-size: 1em;
+  padding: 0 4px;
+  visibility: hidden;
+}
+
+.tab-item:hover .close-tab-btn {
+  visibility: visible;
 }
 
 .close-tab-btn:hover {
-  color: white;
-  background-color: #5c6370;
-  border-radius: 50%;
+  color: #fff;
 }
-
-.new-tab-btn {
-  background-color: #3a3f4b;
-  border: none;
-  color: white;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  font-size: 1.5em;
-  line-height: 28px;
-  text-align: center;
-  cursor: pointer;
-  margin-left: 10px;
-}
-
-.new-tab-btn:hover {
-  background-color: #4f5666;
-}
-
-.settings-btn {
-  background-color: #3a3f4b;
-  border: none;
-  color: white;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  font-size: 1.1em;
-  line-height: 28px;
-  text-align: center;
-  cursor: pointer;
-  margin-left: 10px;
-}
-.settings-btn:hover { background-color: #4f5666; }
 </style>

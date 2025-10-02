@@ -2,28 +2,22 @@
 
 declare namespace NodeJS {
   interface ProcessEnv {
-    /**
-     * The built directory structure
-     *
-     * ```tree
-     * ├─┬─┬ dist
-     * │ │ └── index.html
-     * │ │
-     * │ ├─┬ dist-electron
-     * │ │ ├── main.js
-     * │ │ └── preload.js
-     * │
-     * ```
-     */
     APP_ROOT: string
-    /** /dist/ or /public/ */
     VITE_PUBLIC: string
   }
 }
 
-// Used in Renderer process, expose in `preload.ts`
 interface Window {
   ipcRenderer: import('electron').IpcRenderer
-  ssh: any
-  settings: any
+  ssh: {
+    connect: (options: any) => void;
+    sendData: (data: string) => void;
+    resize: (size: { rows: number, cols: number }) => void;
+    disconnect: () => void;
+    onData: (func: (data: string) => void) => () => void;
+    onConnected: (func: () => void) => () => void;
+    onDisconnected: (func: () => void) => () => void;
+    onError: (func: (error: string) => void) => () => void;
+    removeAllListeners: () => void;
+  }
 }

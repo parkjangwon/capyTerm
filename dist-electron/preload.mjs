@@ -1,34 +1,34 @@
 "use strict";
 const electron = require("electron");
-const validChannels = ["ssh:data", "ssh:status", "ssh:error", "settings:open"];
 electron.contextBridge.exposeInMainWorld("ssh", {
   connect: (tabId, options) => electron.ipcRenderer.send("ssh:connect", { tabId, options }),
   sendData: (tabId, data) => electron.ipcRenderer.send("ssh:data", { tabId, data }),
-  resize: (tabId, size) => electron.ipcRenderer.send("ssh:resize", { tabId, ...size }),
+  resize: (tabId, size) => electron.ipcRenderer.send("ssh:resize", { tabId, size }),
   disconnect: (tabId) => electron.ipcRenderer.send("ssh:disconnect", { tabId }),
-  duplicateSession: (originalTabId, newTabId) => electron.ipcRenderer.send("ssh:duplicate-session", { originalTabId, newTabId }),
-  on: (channel, func) => {
-    if (validChannels.includes(channel)) {
-      const subscription = (event, ...args) => func(...args);
-      electron.ipcRenderer.on(channel, subscription);
-      return () => {
-        electron.ipcRenderer.removeListener(channel, subscription);
-      };
-    }
+  onData: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("ssh:data", subscription);
+    return () => electron.ipcRenderer.removeListener("ssh:data", subscription);
   },
-  removeAllListeners: (channel) => {
-    if (validChannels.includes(channel)) {
-      electron.ipcRenderer.removeAllListeners(channel);
-    }
-  }
-});
-electron.contextBridge.exposeInMainWorld("settings", {
-  read: () => electron.ipcRenderer.invoke("settings:read"),
-  write: (settings) => electron.ipcRenderer.invoke("settings:write", settings),
-  path: () => electron.ipcRenderer.invoke("settings:path"),
-  onOpen: (handler) => {
-    const subscription = () => handler();
-    electron.ipcRenderer.on("settings:open", subscription);
-    return () => electron.ipcRenderer.removeListener("settings:open", subscription);
+  onConnected: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("ssh:connected", subscription);
+    return () => electron.ipcRenderer.removeListener("ssh:connected", subscription);
+  },
+  onDisconnected: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("ssh:disconnected", subscription);
+    return () => electron.ipcRenderer.removeListener("ssh:disconnected", subscription);
+  },
+  onError: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("ssh:error", subscription);
+    return () => electron.ipcRenderer.removeListener("ssh:error", subscription);
+  },
+  removeAllListeners: () => {
+    electron.ipcRenderer.removeAllListeners("ssh:data");
+    electron.ipcRenderer.removeAllListeners("ssh:connected");
+    electron.ipcRenderer.removeAllListeners("ssh:disconnected");
+    electron.ipcRenderer.removeAllListeners("ssh:error");
   }
 });
