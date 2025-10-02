@@ -1,8 +1,18 @@
 import { defineStore } from 'pinia';
 import { ref, nextTick } from 'vue';
 
+export type TabType = 'ssh' | 'local';
+
+export interface Tab {
+  id: number;
+  name: string;
+  type: TabType;
+  connected: boolean;
+  connectionOptions?: any;
+}
+
 export const useTabsStore = defineStore('tabs', () => {
-  const tabs = ref<any[]>([]);
+  const tabs = ref<Tab[]>([]);
   const activeTabId = ref<number | null>(null);
   let nextTabId = 1;
 
@@ -12,22 +22,33 @@ export const useTabsStore = defineStore('tabs', () => {
 
   function updateTabNames() {
     tabs.value.forEach((tab, index) => {
-      tab.name = `Terminal ${index + 1}`;
+      tab.name = tab.type === 'local' ? `Local Shell ${index + 1}` : `Terminal ${index + 1}`;
     });
   }
 
-  function handleNewTab() {
+  function handleNewTab(type: TabType = 'ssh') {
     const newId = nextTabId++;
-    const newTab = {
+    const newTab: Tab = {
       id: newId,
       name: ``, // Will be set by updateTabNames
-      type: 'terminal',
-      connected: false,
-      connectionOptions: {},
+      type,
+      connected: type === 'local', // Local tabs are connected by default
     };
+    if (type === 'ssh') {
+      newTab.connectionOptions = {};
+    }
     tabs.value.push(newTab);
     updateTabNames();
     activeTabId.value = newTab.id;
+    return newId;
+  }
+
+  function handleNewSshTab() {
+    return handleNewTab('ssh');
+  }
+
+  function handleNewLocalTab() {
+    return handleNewTab('local');
   }
 
   function handleSwitchTab(id: number) {
@@ -61,18 +82,19 @@ export const useTabsStore = defineStore('tabs', () => {
     updateTabNames();
 
     if (tabs.value.length === 0) {
-      nextTick(() => handleNewTab());
+      nextTick(() => handleNewSshTab());
     }
   }
 
-  // Initialize with a single tab
-  handleNewTab();
+  // Initialize with a single ssh tab
+  handleNewSshTab();
 
   return {
     tabs,
     activeTabId,
     getTabById,
-    handleNewTab,
+    handleNewSshTab,
+    handleNewLocalTab,
     handleSwitchTab,
     handleCloseTab,
     switchToNextTab,

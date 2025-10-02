@@ -14,7 +14,9 @@
           :ref="(el) => { if (el) terminalTabRefs[index] = el }"
           :tab-id="tab.id"
           :connected="tab.connected"
+          :type="tab.type"
           @connect="(options) => handleConnect(tab.id, options)"
+          @spawn="() => handleSpawn(tab.id)"
           v-show="tab.id === activeTabId"
         />
       </template>
@@ -29,6 +31,7 @@ import TabBar from './components/TabBar.vue';
 import TerminalTab from './components/TerminalTab.vue';
 import { useTabsStore } from './stores/tabs';
 import { sshService } from './services/ssh';
+import { localTerminalService } from './services/localTerminal';
 
 const tabsStore = useTabsStore();
 const { tabs, activeTabId } = storeToRefs(tabsStore);
@@ -47,15 +50,31 @@ function handleConnect(tabId: number, options: any) {
   }
 }
 
+function handleSpawn(tabId: number) {
+  localTerminalService.spawn(tabId);
+}
+
 function onCloseTab(tabId: number) {
+  const tab = tabsStore.getTabById(tabId);
+  if (!tab) return;
+
+  if (tab.type === 'ssh') {
+    sshService.disconnect(tabId);
+  } else {
+    localTerminalService.disconnect(tabId);
+  }
   tabsStore.handleCloseTab(tabId);
-  sshService.disconnect(tabId);
 }
 
 function handleKeyDown(e: KeyboardEvent) {
   if (e.metaKey && e.key === 't') {
     e.preventDefault();
-    tabsStore.handleNewTab();
+    tabsStore.handleNewSshTab();
+    return;
+  }
+  if (e.metaKey && e.key === 'h') {
+    e.preventDefault();
+    tabsStore.handleNewLocalTab();
     return;
   }
   if (e.metaKey && e.key === 'w') {
@@ -78,9 +97,17 @@ function handleKeyDown(e: KeyboardEvent) {
 
 onMounted(() => {
   sshService.init(tabsStore);
+  localTerminalService.init(tabsStore);
   window.addEventListener('keydown', handleKeyDown);
 
   window.ssh.onData(({ tabId, data }) => {
+    const tabIndex = tabs.value.findIndex(t => t.id === tabId);
+    if (tabIndex !== -1 && terminalTabRefs.value[tabIndex]) {
+      terminalTabRefs.value[tabIndex].write(data);
+    }
+  });
+
+  window.localTerminal.onData(({ tabId, data }) => {
     const tabIndex = tabs.value.findIndex(t => t.id === tabId);
     if (tabIndex !== -1 && terminalTabRefs.value[tabIndex]) {
       terminalTabRefs.value[tabIndex].write(data);
@@ -90,7 +117,13 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown);
-  tabs.value.forEach(tab => sshService.disconnect(tab.id));
+  tabs.value.forEach(tab => {
+    if (tab.type === 'ssh') {
+      sshService.disconnect(tab.id);
+    } else {
+      localTerminalService.disconnect(tab.id);
+    }
+  });
 });
 
 </script>

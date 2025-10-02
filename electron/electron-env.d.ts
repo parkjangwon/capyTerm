@@ -20,4 +20,11 @@ interface Window {
     onError: (callback: (args: { tabId: number, error: string }) => void) => void;
     removeAllListeners: () => void;
   }
+  localTerminal: {
+    spawn: (tabId: number) => void;
+    sendData: (tabId: number, data: string) => void;
+    resize: (tabId: number, size: { rows: number, cols: number }) => void;
+    disconnect: (tabId: number) => void;
+    onData: (callback: (args: { tabId: number, data: string }) => void) => void;
+  }
 }

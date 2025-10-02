@@ -32,3 +32,14 @@ electron.contextBridge.exposeInMainWorld("ssh", {
     electron.ipcRenderer.removeAllListeners("ssh:error");
   }
 });
+electron.contextBridge.exposeInMainWorld("localTerminal", {
+  spawn: (tabId) => electron.ipcRenderer.send("local-terminal:spawn", { tabId }),
+  sendData: (tabId, data) => electron.ipcRenderer.send("local-terminal:data", { tabId, data }),
+  resize: (tabId, size) => electron.ipcRenderer.send("local-terminal:resize", { tabId, size }),
+  disconnect: (tabId) => electron.ipcRenderer.send("local-terminal:disconnect", { tabId }),
+  onData: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("local-terminal:data", subscription);
+    return () => electron.ipcRenderer.removeListener("local-terminal:data", subscription);
+  }
+});

@@ -1,8 +1,8 @@
 <template>
   <div class="terminal-tab-content">
-    <div v-if="!connected" class="connection-form-container">
+    <div v-if="type === 'ssh' && !connected" class="connection-form-container">
       <form @submit.prevent="submitConnection" class="connection-form">
-        <h3>New Connection</h3>
+        <h3>New SSH Connection</h3>
         <div class="form-group">
           <label for="connectionString">Connection</label>
           <input :id="`connectionString-${tabId}`" v-model="form.connectionString" type="text" placeholder="user@host" required />
@@ -47,20 +47,23 @@
       v-else 
       ref="terminalViewRef"
       :tab-id="tabId"
+      :type="type"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, defineProps, defineEmits, defineExpose } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import TerminalView from './TerminalView.vue';
+import type { TabType } from '../stores/tabs';
 
 const props = defineProps<{
   tabId: number;
   connected: boolean;
+  type: TabType;
 }>();
 
-const emit = defineEmits(['connect']);
+const emit = defineEmits(['connect', 'spawn']);
 
 const terminalViewRef = ref<InstanceType<typeof TerminalView> | null>(null);
 
@@ -103,14 +106,18 @@ function submitConnection() {
 }
 
 onMounted(() => {
-  const savedConnection = localStorage.getItem('capyTerm.connection');
-  if (savedConnection) {
-    const saved = JSON.parse(savedConnection);
-    form.connectionString = saved.connectionString || '';
-    form.port = saved.port || 22;
-    form.authMethod = saved.authMethod || 'password';
-    form.privateKeyPath = saved.privateKeyPath || '';
-    form.remember = true;
+  if (props.type === 'ssh') {
+    const savedConnection = localStorage.getItem('capyTerm.connection');
+    if (savedConnection) {
+      const saved = JSON.parse(savedConnection);
+      form.connectionString = saved.connectionString || '';
+      form.port = saved.port || 22;
+      form.authMethod = saved.authMethod || 'password';
+      form.privateKeyPath = saved.privateKeyPath || '';
+      form.remember = true;
+    }
+  } else if (props.type === 'local') {
+    emit('spawn');
   }
 });
 

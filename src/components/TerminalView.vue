@@ -3,13 +3,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, defineProps, defineExpose } from 'vue';
+import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
+import { sshService } from '../services/ssh';
+import { localTerminalService } from '../services/localTerminal';
+import type { TabType } from '../stores/tabs';
 
 const props = defineProps<{
   tabId: number;
+  type: TabType;
 }>();
 
 const terminalContainer = ref<HTMLElement | null>(null);
@@ -42,11 +46,19 @@ onMounted(() => {
   }
   
   term.onData(data => {
-    window.ssh.sendData(props.tabId, data);
+    if (props.type === 'ssh') {
+      sshService.sendData(props.tabId, data);
+    } else {
+      localTerminalService.sendData(props.tabId, data);
+    }
   });
 
   term.onResize((size) => {
-    window.ssh.resize(props.tabId, size);
+    if (props.type === 'ssh') {
+      sshService.resize(props.tabId, size);
+    } else {
+      localTerminalService.resize(props.tabId, size);
+    }
   });
 
   term.attachCustomKeyEventHandler((arg) => {

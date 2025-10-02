@@ -3,6 +3,9 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
 import { Client } from "ssh2";
+import * as pty from "node-pty";
+import os from "os";
+const shellPath = os.platform() === "win32" ? "powershell.exe" : process.env.SHELL || "bash";
 app.setName("capyTerm");
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
@@ -12,6 +15,7 @@ const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 const windows = /* @__PURE__ */ new Set();
 const sshConnections = /* @__PURE__ */ new Map();
+const localTerminals = /* @__PURE__ */ new Map();
 function createWindow() {
   const win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, "icon.png"),
@@ -29,6 +33,13 @@ function createWindow() {
         const conn = sshConnections.get(key);
         conn == null ? void 0 : conn.client.end();
         sshConnections.delete(key);
+      }
+    }
+    for (const key of localTerminals.keys()) {
+      if (key.startsWith(`${winId}-`)) {
+        const term = localTerminals.get(key);
+        term == null ? void 0 : term.kill();
+        localTerminals.delete(key);
       }
     }
     windows.delete(win);
@@ -60,6 +71,14 @@ function closeSshSession(winId, tabId) {
     sshConnections.delete(sessionKey);
     const win = BrowserWindow.fromId(winId);
     win == null ? void 0 : win.webContents.send("ssh:disconnected", { tabId });
+  }
+}
+function closeLocalTerminal(winId, tabId) {
+  const sessionKey = `${winId}-${tabId}`;
+  const term = localTerminals.get(sessionKey);
+  if (term) {
+    term.kill();
+    localTerminals.delete(sessionKey);
   }
 }
 app.whenReady().then(() => {
@@ -195,6 +214,49 @@ app.whenReady().then(() => {
     const winId = (_a = event.sender.getOwnerBrowserWindow()) == null ? void 0 : _a.id;
     if (winId) {
       closeSshSession(winId, tabId);
+    }
+  });
+  ipcMain.on("local-terminal:spawn", (event, { tabId }) => {
+    const win = event.sender.getOwnerBrowserWindow();
+    if (!win) return;
+    const winId = win.id;
+    const sessionKey = `${winId}-${tabId}`;
+    const ptyProcess = pty.spawn(shellPath, [], {
+      name: "xterm-color",
+      cols: 80,
+      rows: 30,
+      cwd: process.env.HOME,
+      env: process.env
+    });
+    ptyProcess.onData((data) => {
+      win.webContents.send("local-terminal:data", { tabId, data });
+    });
+    ptyProcess.onExit(() => {
+      closeLocalTerminal(winId, tabId);
+    });
+    localTerminals.set(sessionKey, ptyProcess);
+  });
+  ipcMain.on("local-terminal:data", (event, { tabId, data }) => {
+    var _a, _b;
+    const winId = (_a = event.sender.getOwnerBrowserWindow()) == null ? void 0 : _a.id;
+    if (winId) {
+      const sessionKey = `${winId}-${tabId}`;
+      (_b = localTerminals.get(sessionKey)) == null ? void 0 : _b.write(data);
+    }
+  });
+  ipcMain.on("local-terminal:resize", (event, { tabId, size }) => {
+    var _a, _b;
+    const winId = (_a = event.sender.getOwnerBrowserWindow()) == null ? void 0 : _a.id;
+    if (winId) {
+      const sessionKey = `${winId}-${tabId}`;
+      (_b = localTerminals.get(sessionKey)) == null ? void 0 : _b.resize(size.cols, size.rows);
+    }
+  });
+  ipcMain.on("local-terminal:disconnect", (event, { tabId }) => {
+    var _a;
+    const winId = (_a = event.sender.getOwnerBrowserWindow()) == null ? void 0 : _a.id;
+    if (winId) {
+      closeLocalTerminal(winId, tabId);
     }
   });
 });

@@ -37,3 +37,16 @@ contextBridge.exposeInMainWorld('ssh', {
     ipcRenderer.removeAllListeners('ssh:error');
   },
 });
+
+contextBridge.exposeInMainWorld('localTerminal', {
+  spawn: (tabId: number) => ipcRenderer.send('local-terminal:spawn', { tabId }),
+  sendData: (tabId: number, data: string) => ipcRenderer.send('local-terminal:data', { tabId, data }),
+  resize: (tabId: number, size: { rows: number, cols: number }) => ipcRenderer.send('local-terminal:resize', { tabId, size }),
+  disconnect: (tabId: number) => ipcRenderer.send('local-terminal:disconnect', { tabId }),
+
+  onData: (func: (args: { tabId: number, data: string }) => void) => {
+    const subscription = (_: any, args: { tabId: number, data: string }) => func(args);
+    ipcRenderer.on('local-terminal:data', subscription);
+    return () => ipcRenderer.removeListener('local-terminal:data', subscription);
+  },
+});
