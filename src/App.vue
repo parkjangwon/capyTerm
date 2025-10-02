@@ -2,9 +2,9 @@
   <div id="app-container">
     <div class="app-header">
       <TabBar 
-        :tabs="tabs" 
-        :active-tab-id="activeTabId" 
-        @switch-tab="handleSwitchTab"
+        :tabs="tabs"
+        :active-tab-id="activeTabId"
+        @switch-tab="tabsStore.handleSwitchTab"
         @close-tab="onCloseTab"
       />
     </div>
@@ -24,11 +24,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, onBeforeUpdate } from 'vue';
+import { storeToRefs } from 'pinia';
 import TabBar from './components/TabBar.vue';
 import TerminalTab from './components/TerminalTab.vue';
-import { useTabManager } from './composables/useTabManager';
+import { useTabsStore } from './stores/tabs';
+import { sshService } from './services/ssh';
 
-const { tabs, activeTabId, getTabById, handleNewTab, handleSwitchTab, handleCloseTab, switchToNextTab, switchToPreviousTab } = useTabManager();
+const tabsStore = useTabsStore();
+const { tabs, activeTabId } = storeToRefs(tabsStore);
 
 const terminalTabRefs = ref<any[]>([]);
 
@@ -37,22 +40,22 @@ onBeforeUpdate(() => {
 });
 
 function handleConnect(tabId: number, options: any) {
-  const tab = getTabById(tabId);
+  const tab = tabsStore.getTabById(tabId);
   if (tab) {
     tab.connectionOptions = options;
-    window.ssh.connect(tabId, options);
+    sshService.connect(tabId, options);
   }
 }
 
 function onCloseTab(tabId: number) {
-  handleCloseTab(tabId);
-  window.ssh.disconnect(tabId);
+  tabsStore.handleCloseTab(tabId);
+  sshService.disconnect(tabId);
 }
 
 function handleKeyDown(e: KeyboardEvent) {
   if (e.metaKey && e.key === 't') {
     e.preventDefault();
-    handleNewTab();
+    tabsStore.handleNewTab();
     return;
   }
   if (e.metaKey && e.key === 'w') {
@@ -65,38 +68,17 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.ctrlKey && e.key === 'Tab') {
     e.preventDefault();
     if (e.shiftKey) {
-      switchToPreviousTab();
+      tabsStore.switchToPreviousTab();
     } else {
-      switchToNextTab();
+      tabsStore.switchToNextTab();
     }
     return;
   }
 }
 
 onMounted(() => {
+  sshService.init(tabsStore);
   window.addEventListener('keydown', handleKeyDown);
-
-  window.ssh.onConnected(({ tabId }) => {
-    const tab = getTabById(tabId);
-    if (tab) {
-      tab.connected = true;
-    }
-  });
-
-  window.ssh.onDisconnected(({ tabId }) => {
-    const tab = getTabById(tabId);
-    if (tab) {
-      tab.connected = false;
-    }
-  });
-
-  window.ssh.onError(({ tabId, error }) => {
-    alert(`Connection Failed for tab ${tabId}: ${error}`);
-    const tab = getTabById(tabId);
-    if (tab) {
-      tab.connected = false;
-    }
-  });
 
   window.ssh.onData(({ tabId, data }) => {
     const tabIndex = tabs.value.findIndex(t => t.id === tabId);
@@ -108,7 +90,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown);
-  tabs.value.forEach(tab => window.ssh.disconnect(tab.id));
+  tabs.value.forEach(tab => sshService.disconnect(tab.id));
 });
 
 </script>
