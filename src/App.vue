@@ -97,7 +97,7 @@ function handleKeyDown(e: KeyboardEvent) {
 
 onMounted(() => {
   sshService.init(tabsStore);
-  localTerminalService.init(tabsStore);
+  localTerminalService.init();
   window.addEventListener('keydown', handleKeyDown);
 
   window.ssh.onData(({ tabId, data }) => {

@@ -172,7 +172,7 @@ app.whenReady().then(() => {
 
   // SSH Handlers
   ipcMain.on('ssh:connect', (event, { tabId, options }) => {
-    const win = event.sender.getOwnerBrowserWindow();
+    const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return;
     const winId = win.id;
     const sessionKey = `${winId}-${tabId}`;
@@ -218,31 +218,34 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('ssh:data', (event, { tabId, data }) => {
-    const winId = event.sender.getOwnerBrowserWindow()?.id;
-    if (winId) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const winId = win.id;
       const sessionKey = `${winId}-${tabId}`;
       sshConnections.get(sessionKey)?.stream?.write(data);
     }
   });
 
   ipcMain.on('ssh:resize', (event, { tabId, size }) => {
-    const winId = event.sender.getOwnerBrowserWindow()?.id;
-    if (winId) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const winId = win.id;
       const sessionKey = `${winId}-${tabId}`;
       sshConnections.get(sessionKey)?.stream?.setWindow(size.rows, size.cols, 90, 90);
     }
   });
 
   ipcMain.on('ssh:disconnect', (event, { tabId }) => {
-    const winId = event.sender.getOwnerBrowserWindow()?.id;
-    if (winId) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const winId = win.id;
       closeSshSession(winId, tabId);
     }
   });
 
   // Local Terminal Handlers
   ipcMain.on('local-terminal:spawn', (event, { tabId }) => {
-    const win = event.sender.getOwnerBrowserWindow();
+    const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return;
     const winId = win.id;
     const sessionKey = `${winId}-${tabId}`;
@@ -267,24 +270,27 @@ app.whenReady().then(() => {
   });
 
   ipcMain.on('local-terminal:data', (event, { tabId, data }) => {
-    const winId = event.sender.getOwnerBrowserWindow()?.id;
-    if (winId) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const winId = win.id;
       const sessionKey = `${winId}-${tabId}`;
       localTerminals.get(sessionKey)?.write(data);
     }
   });
 
   ipcMain.on('local-terminal:resize', (event, { tabId, size }) => {
-    const winId = event.sender.getOwnerBrowserWindow()?.id;
-    if (winId) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const winId = win.id;
       const sessionKey = `${winId}-${tabId}`;
       localTerminals.get(sessionKey)?.resize(size.cols, size.rows);
     }
   });
 
   ipcMain.on('local-terminal:disconnect', (event, { tabId }) => {
-    const winId = event.sender.getOwnerBrowserWindow()?.id;
-    if (winId) {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      const winId = win.id;
       closeLocalTerminal(winId, tabId);
     }
   });
