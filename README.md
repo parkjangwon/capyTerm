@@ -1,18 +1,29 @@
-# Vue 3 + TypeScript + Vite
+# capyTerm
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+A simple and minimal terminal application for both SSH and local shell access, inspired by the simplicity of PuTTY and the aesthetics of Kitty.
 
-## Recommended IDE Setup
+## Features
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
+- **Dual Terminal Support**: Seamlessly switch between remote SSH sessions and your local shell.
+- **Minimalist Tab Interface**: A clean, Kitty-like tabbed interface for managing multiple sessions within a single window.
+- **Multi-Window Support**: Open multiple windows, each with its own set of tabs.
+- **Connection Persistence**: Save your SSH connection details (host, port, auth method, etc.) for quick access.
 
-## Type Support For `.vue` Imports in TS
+## Shortcuts
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin) to make the TypeScript language service aware of `.vue` types.
+### Window and Tab Management
 
-If the standalone TypeScript plugin doesn't feel fast enough to you, Volar has also implemented a [Take Over Mode](https://github.com/johnsoncodehk/volar/discussions/471#discussioncomment-1361669) that is more performant. You can enable it by the following steps:
+| Shortcut         | Description                  |
+| :--------------- | :--------------------------- |
+| `CmdOrCtrl+N`    | Open a new window.           |
+| `CmdOrCtrl+T`    | Open a new SSH terminal tab. |
+| `CmdOrCtrl+H`    | Open a new local shell tab.  |
+| `CmdOrCtrl+W`    | Close the active tab.        |
+| `Ctrl+Tab`       | Switch to the next tab.      |
+| `Ctrl+Shift+Tab` | Switch to the previous tab.  |
 
-1. Disable the built-in TypeScript Extension
-   1. Run `Extensions: Show Built-in Extensions` from VSCode's command palette
-   2. Find `TypeScript and JavaScript Language Features`, right click and select `Disable (Workspace)`
-2. Reload the VSCode window by running `Developer: Reload Window` from the command palette.
+### Terminal Actions
+
+| Shortcut      | Description                |
+| :------------ | :------------------------- |
+| `CmdOrCtrl+L` | Clear the terminal screen. |
