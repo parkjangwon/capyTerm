@@ -1,15 +1,57 @@
 <template>
   <div class="screensaver-overlay" v-if="active">
-    <div class="capybara-container">
-      <img src="./assets/capybara.png" alt="Capybara" class="capybara" />
-    </div>
+    <img 
+      v-for="capy in capybaras"
+      :key="capy.id"
+      src="/capybara-screen-saver.png" 
+      alt="Capybara"
+      class="capybara"
+      :style="capy.style"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { ref, watch } from 'vue';
+
+const props = defineProps<{
   active: boolean;
 }>();
+
+const capybaras = ref<any[]>([]);
+const NUM_CAPYBARAS = 15; // Reduced number to minimize overlapping
+
+function generateCapybaras() {
+  const newCapybaras = [];
+  for (let i = 0; i < NUM_CAPYBARAS; i++) {
+    const duration = Math.random() * 30 + 20; // 20-50 seconds (slower)
+    const delay = Math.random() * -50; // Start at different times
+    const top = Math.random() * 90; // Keep them within the viewport vertically
+    const direction = Math.random() > 0.5 ? 'normal' : 'reverse';
+    const scale = Math.random() * 0.4 + 0.3; // 0.3 - 0.7 scale (smaller)
+
+    newCapybaras.push({
+      id: i,
+      style: {
+        top: `${top}%`,
+        transform: `scale(${scale})`,
+        animationDuration: `${duration}s`,
+        animationDelay: `${delay}s`,
+        animationDirection: direction,
+      },
+    });
+  }
+  capybaras.value = newCapybaras;
+}
+
+watch(() => props.active, (isActive) => {
+  if (isActive) {
+    generateCapybaras();
+  } else {
+    capybaras.value = [];
+  }
+});
+
 </script>
 
 <style scoped>
@@ -19,42 +61,27 @@ defineProps<{
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.capybara-container {
-  position: absolute;
-  width: 100%;
-  height: 100%;
+  background-color: #000;
   overflow: hidden;
+  z-index: 1000;
 }
 
 .capybara {
   position: absolute;
-  width: 100px; /* Adjust size as needed */
+  width: 45px;
   height: auto;
-  animation: floatAcross 20s linear infinite;
+  left: -100px; /* Start off-screen */
+  animation-name: floatAcross;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
 }
 
 @keyframes floatAcross {
-  0% {
-    transform: translateX(-100px) translateY(20%);
+  from {
+    transform: translateX(0);
   }
-  25% {
-    transform: translateX(calc(100vw - 100px)) translateY(80%);
-  }
-  50% {
-    transform: translateX(-100px) translateY(50%);
-  }
-  75% {
-    transform: translateX(calc(100vw - 100px)) translateY(10%);
-  }
-  100% {
-    transform: translateX(-100px) translateY(20%);
+  to {
+    transform: translateX(calc(100vw + 100px));
   }
 }
 </style>

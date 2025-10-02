@@ -21,6 +21,7 @@
         />
       </template>
     </div>
+    <Screensaver :active="isScreensaverActive" />
   </div>
 </template>
 
@@ -29,6 +30,7 @@ import { ref, onMounted, onBeforeUnmount, onBeforeUpdate } from 'vue';
 import { storeToRefs } from 'pinia';
 import TabBar from './components/TabBar.vue';
 import TerminalTab from './components/TerminalTab.vue';
+import Screensaver from './components/Screensaver.vue';
 import { useTabsStore } from './stores/tabs';
 import { sshService } from './services/ssh';
 import { localTerminalService } from './services/localTerminal';
@@ -37,12 +39,15 @@ const tabsStore = useTabsStore();
 const { tabs, activeTabId } = storeToRefs(tabsStore);
 
 const terminalTabRefs = ref<any[]>([]);
+const isScreensaverActive = ref(false);
+let inactivityTimer: number;
 
 onBeforeUpdate(() => {
   terminalTabRefs.value = [];
 });
 
 function handleConnect(tabId: number, options: any) {
+  resetInactivityTimer();
   const tab = tabsStore.getTabById(tabId);
   if (tab) {
     tab.connectionOptions = options;
@@ -51,10 +56,12 @@ function handleConnect(tabId: number, options: any) {
 }
 
 function handleSpawn(tabId: number) {
+  resetInactivityTimer();
   localTerminalService.spawn(tabId);
 }
 
 function onCloseTab(tabId: number) {
+  resetInactivityTimer();
   const tab = tabsStore.getTabById(tabId);
   if (!tab) return;
 
@@ -66,7 +73,22 @@ function onCloseTab(tabId: number) {
   tabsStore.handleCloseTab(tabId);
 }
 
+function handleUserActivity() {
+  if (isScreensaverActive.value) {
+    isScreensaverActive.value = false;
+  }
+  resetInactivityTimer();
+}
+
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = window.setTimeout(() => {
+    isScreensaverActive.value = true;
+  }, 600000); // 10 minutes
+}
+
 function handleKeyDown(e: KeyboardEvent) {
+  handleUserActivity();
   if (e.metaKey && e.key === 't') {
     e.preventDefault();
     tabsStore.handleNewSshTab();
@@ -99,6 +121,8 @@ onMounted(() => {
   sshService.init(tabsStore);
   localTerminalService.init();
   window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('mousemove', handleUserActivity);
+  resetInactivityTimer();
 
   window.ssh.onData(({ tabId, data }) => {
     const tabIndex = tabs.value.findIndex(t => t.id === tabId);
@@ -117,6 +141,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeyDown);
+  window.removeEventListener('mousemove', handleUserActivity);
+  clearTimeout(inactivityTimer);
   tabs.value.forEach(tab => {
     if (tab.type === 'ssh') {
       sshService.disconnect(tab.id);

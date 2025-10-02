@@ -1,1 +1,45 @@
-"use strict";const r=require("electron");r.contextBridge.exposeInMainWorld("ssh",{connect:(e,n)=>r.ipcRenderer.send("ssh:connect",{tabId:e,options:n}),sendData:(e,n)=>r.ipcRenderer.send("ssh:data",{tabId:e,data:n}),resize:(e,n)=>r.ipcRenderer.send("ssh:resize",{tabId:e,size:n}),disconnect:e=>r.ipcRenderer.send("ssh:disconnect",{tabId:e}),onData:e=>{const n=(c,s)=>e(s);return r.ipcRenderer.on("ssh:data",n),()=>r.ipcRenderer.removeListener("ssh:data",n)},onConnected:e=>{const n=(c,s)=>e(s);return r.ipcRenderer.on("ssh:connected",n),()=>r.ipcRenderer.removeListener("ssh:connected",n)},onDisconnected:e=>{const n=(c,s)=>e(s);return r.ipcRenderer.on("ssh:disconnected",n),()=>r.ipcRenderer.removeListener("ssh:disconnected",n)},onError:e=>{const n=(c,s)=>e(s);return r.ipcRenderer.on("ssh:error",n),()=>r.ipcRenderer.removeListener("ssh:error",n)},removeAllListeners:()=>{r.ipcRenderer.removeAllListeners("ssh:data"),r.ipcRenderer.removeAllListeners("ssh:connected"),r.ipcRenderer.removeAllListeners("ssh:disconnected"),r.ipcRenderer.removeAllListeners("ssh:error")}});r.contextBridge.exposeInMainWorld("localTerminal",{spawn:e=>r.ipcRenderer.send("local-terminal:spawn",{tabId:e}),sendData:(e,n)=>r.ipcRenderer.send("local-terminal:data",{tabId:e,data:n}),resize:(e,n)=>r.ipcRenderer.send("local-terminal:resize",{tabId:e,size:n}),disconnect:e=>r.ipcRenderer.send("local-terminal:disconnect",{tabId:e}),onData:e=>{const n=(c,s)=>e(s);return r.ipcRenderer.on("local-terminal:data",n),()=>r.ipcRenderer.removeListener("local-terminal:data",n)}});
+"use strict";
+const electron = require("electron");
+electron.contextBridge.exposeInMainWorld("ssh", {
+  connect: (tabId, options) => electron.ipcRenderer.send("ssh:connect", { tabId, options }),
+  sendData: (tabId, data) => electron.ipcRenderer.send("ssh:data", { tabId, data }),
+  resize: (tabId, size) => electron.ipcRenderer.send("ssh:resize", { tabId, size }),
+  disconnect: (tabId) => electron.ipcRenderer.send("ssh:disconnect", { tabId }),
+  onData: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("ssh:data", subscription);
+    return () => electron.ipcRenderer.removeListener("ssh:data", subscription);
+  },
+  onConnected: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("ssh:connected", subscription);
+    return () => electron.ipcRenderer.removeListener("ssh:connected", subscription);
+  },
+  onDisconnected: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("ssh:disconnected", subscription);
+    return () => electron.ipcRenderer.removeListener("ssh:disconnected", subscription);
+  },
+  onError: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("ssh:error", subscription);
+    return () => electron.ipcRenderer.removeListener("ssh:error", subscription);
+  },
+  removeAllListeners: () => {
+    electron.ipcRenderer.removeAllListeners("ssh:data");
+    electron.ipcRenderer.removeAllListeners("ssh:connected");
+    electron.ipcRenderer.removeAllListeners("ssh:disconnected");
+    electron.ipcRenderer.removeAllListeners("ssh:error");
+  }
+});
+electron.contextBridge.exposeInMainWorld("localTerminal", {
+  spawn: (tabId) => electron.ipcRenderer.send("local-terminal:spawn", { tabId }),
+  sendData: (tabId, data) => electron.ipcRenderer.send("local-terminal:data", { tabId, data }),
+  resize: (tabId, size) => electron.ipcRenderer.send("local-terminal:resize", { tabId, size }),
+  disconnect: (tabId) => electron.ipcRenderer.send("local-terminal:disconnect", { tabId }),
+  onData: (func) => {
+    const subscription = (_, args) => func(args);
+    electron.ipcRenderer.on("local-terminal:data", subscription);
+    return () => electron.ipcRenderer.removeListener("local-terminal:data", subscription);
+  }
+});
