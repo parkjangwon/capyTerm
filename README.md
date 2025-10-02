@@ -1,3 +1,5 @@
+![logo](/public/icon.png "capyTerm")
+
 # capyTerm
 
 A simple and minimal terminal application for both SSH and local shell access, inspired by the simplicity of PuTTY and the aesthetics of Kitty.
