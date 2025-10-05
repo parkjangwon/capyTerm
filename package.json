@@ -8,7 +8,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build && electron-builder",
+    "build": "vue-tsc && vite build && electron-builder --mac --win",
     "preview": "vite preview",
     "postinstall": "electron-builder install-app-deps"
   },
