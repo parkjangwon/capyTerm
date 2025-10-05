@@ -73,6 +73,16 @@ function onCloseTab(tabId: number) {
   tabsStore.handleCloseTab(tabId);
 }
 
+function closeActiveTabOrWindow() {
+  if (tabs.value.length > 1) {
+    if (activeTabId.value) {
+      onCloseTab(activeTabId.value);
+    }
+  } else {
+    window.app.close();
+  }
+}
+
 function handleUserActivity() {
   if (isScreensaverActive.value) {
     isScreensaverActive.value = false;
@@ -89,30 +99,34 @@ function resetInactivityTimer() {
 
 function handleKeyDown(e: KeyboardEvent) {
   handleUserActivity();
-  if (e.metaKey && e.key === 't') {
+  const isModifierKey = e.metaKey || e.ctrlKey;
+
+  if (isModifierKey && e.key === 't') {
     e.preventDefault();
     tabsStore.handleNewSshTab();
     return;
   }
-  if (e.metaKey && e.key === 'h') {
-    e.preventDefault();
-    tabsStore.handleNewLocalTab();
-    return;
-  }
-  if (e.metaKey && e.key === 'w') {
-    e.preventDefault();
-    if (activeTabId.value) {
-      onCloseTab(activeTabId.value);
+  if (isModifierKey && e.key === 'h') {
+    // Disable local shell on Windows
+    if (navigator.userAgent.indexOf('Win') === -1) {
+      e.preventDefault();
+      tabsStore.handleNewLocalTab();
     }
     return;
   }
-  if (e.ctrlKey && e.key === 'Tab') {
+  if (isModifierKey && e.key === 'w') {
     e.preventDefault();
-    if (e.shiftKey) {
-      tabsStore.switchToPreviousTab();
-    } else {
-      tabsStore.switchToNextTab();
-    }
+    closeActiveTabOrWindow();
+    return;
+  }
+  if (isModifierKey && e.key === '[') {
+    e.preventDefault();
+    tabsStore.switchToPreviousTab();
+    return;
+  }
+  if (isModifierKey && e.key === ']') {
+    e.preventDefault();
+    tabsStore.switchToNextTab();
     return;
   }
 }
@@ -123,6 +137,8 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeyDown);
   window.addEventListener('mousemove', handleUserActivity);
   resetInactivityTimer();
+
+  window.app.onCloseActiveTabOrWindow(closeActiveTabOrWindow);
 
   window.ssh.onData(({ tabId, data }) => {
     const tabIndex = tabs.value.findIndex(t => t.id === tabId);

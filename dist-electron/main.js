@@ -1,64 +1,82 @@
-import { app as u, shell as I, Menu as $, ipcMain as h, BrowserWindow as d } from "electron";
+import { app as y, shell as S, Menu as T, ipcMain as f, BrowserWindow as p } from "electron";
 import { fileURLToPath as W } from "node:url";
-import p from "node:path";
-import O from "node:fs";
-import { Client as j } from "ssh2";
-import * as k from "node-pty";
-import K from "os";
-const L = K.platform() === "win32" ? "powershell.exe" : process.env.SHELL || "bash";
-u.setName("capyTerm");
-const _ = p.dirname(W(import.meta.url));
-process.env.APP_ROOT = p.join(_, "..");
-const v = process.env.VITE_DEV_SERVER_URL, A = p.join(process.env.APP_ROOT, "dist-electron"), R = p.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = v ? p.join(process.env.APP_ROOT, "public") : R;
-const E = /* @__PURE__ */ new Set(), w = /* @__PURE__ */ new Map(), y = /* @__PURE__ */ new Map();
-function P() {
-  const i = new d({
-    icon: p.join(process.env.VITE_PUBLIC, "icon.png"),
+import w from "node:path";
+import k from "node:fs";
+import { Client as L } from "ssh2";
+import * as j from "node-pty";
+import E from "os";
+const K = E.platform() === "win32" ? "cmd.exe" : process.env.SHELL || "bash";
+y.setName("capyTerm");
+const I = w.dirname(W(import.meta.url));
+process.env.APP_ROOT = w.join(I, "..");
+const P = process.env.VITE_DEV_SERVER_URL, F = w.join(process.env.APP_ROOT, "dist-electron"), O = w.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = P ? w.join(process.env.APP_ROOT, "public") : O;
+const $ = /* @__PURE__ */ new Set(), h = /* @__PURE__ */ new Map(), C = /* @__PURE__ */ new Map();
+function R() {
+  const c = new p({
+    icon: w.join(process.env.VITE_PUBLIC, "icon.png"),
     webPreferences: {
-      preload: p.join(_, "preload.mjs"),
+      preload: w.join(I, "preload.mjs"),
       contextIsolation: !0,
       nodeIntegration: !1
     }
   });
-  E.add(i), i.on("closed", () => {
-    const m = i.id;
-    for (const r of w.keys())
-      if (r.startsWith(`${m}-`)) {
-        const e = w.get(r);
-        e == null || e.client.end(), w.delete(r);
+  $.add(c), c.on("closed", () => {
+    const m = c.id;
+    for (const i of h.keys())
+      if (i.startsWith(`${m}-`)) {
+        const r = h.get(i);
+        r == null || r.client.end(), h.delete(i);
       }
-    for (const r of y.keys())
-      if (r.startsWith(`${m}-`)) {
-        const e = y.get(r);
-        e == null || e.kill(), y.delete(r);
+    for (const i of C.keys())
+      if (i.startsWith(`${m}-`)) {
+        const r = C.get(i);
+        r == null || r.kill(), C.delete(i);
       }
-    E.delete(i);
-  }), v ? i.loadURL(v) : i.loadFile(p.join(R, "index.html"));
+    $.delete(c);
+  }), P ? c.loadURL(P) : c.loadFile(w.join(O, "index.html"));
 }
-u.on("window-all-closed", () => {
-  process.platform !== "darwin" && u.quit();
+y.on("window-all-closed", () => {
+  process.platform !== "darwin" && y.quit();
 });
-u.on("activate", () => {
-  E.size === 0 && P();
+y.on("activate", () => {
+  $.size === 0 && R();
 });
-function g(i, m) {
-  const r = `${i}-${m}`, e = w.get(r);
-  if (e) {
-    e.stream && e.stream.close(), e.client.end(), w.delete(r);
-    const o = d.fromId(i);
-    o == null || o.webContents.send("ssh:disconnected", { tabId: m });
+function b(c, m) {
+  const i = `${c}-${m}`, r = h.get(i);
+  if (r) {
+    r.stream && r.stream.close(), r.client.end(), h.delete(i);
+    const n = p.fromId(c);
+    n == null || n.webContents.send("ssh:disconnected", { tabId: m });
   }
 }
-function T(i, m) {
-  const r = `${i}-${m}`, e = y.get(r);
-  e && (e.kill(), y.delete(r));
+function _(c, m) {
+  const i = `${c}-${m}`, r = C.get(i);
+  r && (r.kill(), C.delete(i));
 }
-u.whenReady().then(() => {
-  process.platform === "darwin" && u.dock.setIcon(p.join(process.env.VITE_PUBLIC, "icon.png")), P();
-  const i = process.platform === "darwin", m = [
-    ...i ? [{
-      label: u.getName(),
+y.whenReady().then(() => {
+  process.platform === "darwin" && y.dock.setIcon(w.join(process.env.VITE_PUBLIC, "icon.png")), R();
+  const c = process.platform === "darwin", m = [
+    {
+      label: "New Window",
+      accelerator: "CmdOrCtrl+N",
+      click: () => R()
+    },
+    {
+      label: "Close",
+      accelerator: "CmdOrCtrl+W",
+      click: (n, e) => {
+        e == null || e.webContents.send("close-active-tab-or-window");
+      }
+    }
+  ];
+  c || m.push(
+    { type: "separator" },
+    { role: "quit" }
+  );
+  const i = [
+    ...c ? [{
+      label: y.getName(),
       submenu: [
         { role: "about" },
         { type: "separator" },
@@ -73,15 +91,7 @@ u.whenReady().then(() => {
     }] : [],
     {
       label: "File",
-      submenu: [
-        {
-          label: "New Window",
-          accelerator: "CmdOrCtrl+N",
-          click: () => P()
-        },
-        { type: "separator" },
-        i ? { role: "close" } : { role: "quit" }
-      ]
+      submenu: m
     },
     {
       label: "Edit",
@@ -113,98 +123,102 @@ u.whenReady().then(() => {
         {
           label: "Learn More",
           click: async () => {
-            await I.openExternal("https://github.com/pjwooo/capyTerm");
+            await S.openExternal("https://github.com/pjwooo/capyTerm");
           }
         }
       ]
     }
-  ], r = $.buildFromTemplate(m);
-  $.setApplicationMenu(r), h.on("ssh:connect", (e, { tabId: o, options: s }) => {
-    const n = d.fromWebContents(e.sender);
-    if (!n) return;
-    const t = n.id, c = `${t}-${o}`;
-    w.has(c) && g(t, o);
-    const l = new j(), f = { ...s };
-    if (f.privateKeyPath)
+  ], r = T.buildFromTemplate(i);
+  T.setApplicationMenu(r), f.on("close-window", (n) => {
+    const e = p.fromWebContents(n.sender);
+    e && e.close();
+  }), f.on("ssh:connect", (n, { tabId: e, options: s }) => {
+    const o = p.fromWebContents(n.sender);
+    if (!o) return;
+    const t = o.id, l = `${t}-${e}`;
+    h.has(l) && b(t, e);
+    const a = new L(), u = { ...s };
+    if (u.privateKeyPath)
       try {
-        let a = f.privateKeyPath;
-        a.startsWith("~/") && (a = p.join(u.getPath("home"), a.slice(2))), f.privateKey = O.readFileSync(a, "utf8");
-      } catch (a) {
-        n.webContents.send("ssh:error", { tabId: o, error: `Failed to read private key: ${a.message}` });
+        let d = u.privateKeyPath;
+        d.startsWith("~/") && (d = w.join(y.getPath("home"), d.slice(2))), u.privateKey = k.readFileSync(d, "utf8");
+      } catch (d) {
+        o.webContents.send("ssh:error", { tabId: e, error: `Failed to read private key: ${d.message}` });
         return;
       }
-    l.on("ready", () => {
-      n.webContents.send("ssh:connected", { tabId: o }), l.shell((a, C) => {
-        if (a) {
-          n.webContents.send("ssh:error", { tabId: o, error: a.message });
+    a.on("ready", () => {
+      o.webContents.send("ssh:connected", { tabId: e }), a.shell((d, g) => {
+        if (d) {
+          o.webContents.send("ssh:error", { tabId: e, error: d.message });
           return;
         }
-        w.set(c, { client: l, stream: C }), C.on("data", (b) => n.webContents.send("ssh:data", { tabId: o, data: b.toString() })), C.on("close", () => g(t, o)), C.stderr.on("data", (b) => n.webContents.send("ssh:error", { tabId: o, error: b.toString() }));
+        h.set(l, { client: a, stream: g }), g.on("data", (v) => o.webContents.send("ssh:data", { tabId: e, data: v.toString() })), g.on("close", () => b(t, e)), g.stderr.on("data", (v) => o.webContents.send("ssh:error", { tabId: e, error: v.toString() }));
       });
-    }).on("error", (a) => {
-      n.webContents.send("ssh:error", { tabId: o, error: a.message }), g(t, o);
+    }).on("error", (d) => {
+      o.webContents.send("ssh:error", { tabId: e, error: d.message }), b(t, e);
     }).on("close", () => {
-      g(t, o);
-    }).connect(f);
-  }), h.on("ssh:data", (e, { tabId: o, data: s }) => {
-    var t, c;
-    const n = d.fromWebContents(e.sender);
-    if (n) {
-      const f = `${n.id}-${o}`;
-      (c = (t = w.get(f)) == null ? void 0 : t.stream) == null || c.write(s);
+      b(t, e);
+    }).connect(u);
+  }), f.on("ssh:data", (n, { tabId: e, data: s }) => {
+    var t, l;
+    const o = p.fromWebContents(n.sender);
+    if (o) {
+      const u = `${o.id}-${e}`;
+      (l = (t = h.get(u)) == null ? void 0 : t.stream) == null || l.write(s);
     }
-  }), h.on("ssh:resize", (e, { tabId: o, size: s }) => {
-    var t, c;
-    const n = d.fromWebContents(e.sender);
-    if (n) {
-      const f = `${n.id}-${o}`;
-      (c = (t = w.get(f)) == null ? void 0 : t.stream) == null || c.setWindow(s.rows, s.cols, 90, 90);
+  }), f.on("ssh:resize", (n, { tabId: e, size: s }) => {
+    var t, l;
+    const o = p.fromWebContents(n.sender);
+    if (o) {
+      const u = `${o.id}-${e}`;
+      (l = (t = h.get(u)) == null ? void 0 : t.stream) == null || l.setWindow(s.rows, s.cols, 90, 90);
     }
-  }), h.on("ssh:disconnect", (e, { tabId: o }) => {
-    const s = d.fromWebContents(e.sender);
+  }), f.on("ssh:disconnect", (n, { tabId: e }) => {
+    const s = p.fromWebContents(n.sender);
     if (s) {
-      const n = s.id;
-      g(n, o);
+      const o = s.id;
+      b(o, e);
     }
-  }), h.on("local-terminal:spawn", (e, { tabId: o }) => {
-    const s = d.fromWebContents(e.sender);
+  }), f.on("local-terminal:spawn", (n, { tabId: e }) => {
+    if (E.platform() === "win32") return;
+    const s = p.fromWebContents(n.sender);
     if (!s) return;
-    const n = s.id, t = `${n}-${o}`, c = k.spawn(L, [], {
+    const o = s.id, t = `${o}-${e}`, l = j.spawn(K, [], {
       name: "xterm-color",
       cols: 80,
       rows: 30,
-      cwd: process.env.HOME,
+      cwd: E.platform() === "win32" ? process.env.USERPROFILE : process.env.HOME,
       env: process.env
     });
-    c.onData((l) => {
-      s.webContents.send("local-terminal:data", { tabId: o, data: l });
-    }), c.onExit(() => {
-      T(n, o);
-    }), y.set(t, c);
-  }), h.on("local-terminal:data", (e, { tabId: o, data: s }) => {
+    l.onData((a) => {
+      s.webContents.send("local-terminal:data", { tabId: e, data: a });
+    }), l.onExit(() => {
+      _(o, e);
+    }), C.set(t, l);
+  }), f.on("local-terminal:data", (n, { tabId: e, data: s }) => {
     var t;
-    const n = d.fromWebContents(e.sender);
-    if (n) {
-      const l = `${n.id}-${o}`;
-      (t = y.get(l)) == null || t.write(s);
+    const o = p.fromWebContents(n.sender);
+    if (o) {
+      const a = `${o.id}-${e}`;
+      (t = C.get(a)) == null || t.write(s);
     }
-  }), h.on("local-terminal:resize", (e, { tabId: o, size: s }) => {
+  }), f.on("local-terminal:resize", (n, { tabId: e, size: s }) => {
     var t;
-    const n = d.fromWebContents(e.sender);
-    if (n) {
-      const l = `${n.id}-${o}`;
-      (t = y.get(l)) == null || t.resize(s.cols, s.rows);
+    const o = p.fromWebContents(n.sender);
+    if (o) {
+      const a = `${o.id}-${e}`;
+      (t = C.get(a)) == null || t.resize(s.cols, s.rows);
     }
-  }), h.on("local-terminal:disconnect", (e, { tabId: o }) => {
-    const s = d.fromWebContents(e.sender);
+  }), f.on("local-terminal:disconnect", (n, { tabId: e }) => {
+    const s = p.fromWebContents(n.sender);
     if (s) {
-      const n = s.id;
-      T(n, o);
+      const o = s.id;
+      _(o, e);
     }
   });
 });
 export {
-  A as MAIN_DIST,
-  R as RENDERER_DIST,
-  v as VITE_DEV_SERVER_URL
+  F as MAIN_DIST,
+  O as RENDERER_DIST,
+  P as VITE_DEV_SERVER_URL
 };

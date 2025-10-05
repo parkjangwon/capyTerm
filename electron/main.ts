@@ -7,7 +7,7 @@ import type { Client, ClientChannel } from 'ssh2'
 import * as pty from 'node-pty';
 import os from 'os';
 
-const shellPath = os.platform() === 'win32' ? 'powershell.exe' : (process.env.SHELL || 'bash');
+const shellPath = os.platform() === 'win32' ? 'cmd.exe' : (process.env.SHELL || 'bash');
 
 app.setName('capyTerm')
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -104,6 +104,29 @@ app.whenReady().then(() => {
   createWindow()
 
   const isMac = process.platform === 'darwin'
+
+  const fileSubMenu: any[] = [
+    { 
+      label: 'New Window',
+      accelerator: 'CmdOrCtrl+N',
+      click: () => createWindow()
+    },
+    {
+      label: 'Close',
+      accelerator: 'CmdOrCtrl+W',
+      click: (_: Electron.MenuItem, focusedWindow: Electron.BrowserWindow | undefined) => {
+        focusedWindow?.webContents.send('close-active-tab-or-window');
+      }
+    }
+  ];
+
+  if (!isMac) {
+    fileSubMenu.push(
+      { type: 'separator' },
+      { role: 'quit' }
+    );
+  }
+
   const template: any[] = [
     ...(isMac ? [{
       label: app.getName(),
@@ -121,15 +144,7 @@ app.whenReady().then(() => {
     }] : []),
     {
       label: 'File',
-      submenu: [
-        { 
-          label: 'New Window',
-          accelerator: 'CmdOrCtrl+N',
-          click: () => createWindow()
-        },
-        { type: 'separator' },
-        isMac ? { role: 'close' } : { role: 'quit' }
-      ]
+      submenu: fileSubMenu
     },
     {
       label: 'Edit',
@@ -169,6 +184,13 @@ app.whenReady().then(() => {
   ]
   const menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
+
+  ipcMain.on('close-window', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) {
+      win.close();
+    }
+  });
 
   // SSH Handlers
   ipcMain.on('ssh:connect', (event, { tabId, options }) => {
@@ -245,6 +267,8 @@ app.whenReady().then(() => {
 
   // Local Terminal Handlers
   ipcMain.on('local-terminal:spawn', (event, { tabId }) => {
+    if (os.platform() === 'win32') return; // Feature disabled on Windows
+
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return;
     const winId = win.id;
@@ -254,7 +278,7 @@ app.whenReady().then(() => {
       name: 'xterm-color',
       cols: 80,
       rows: 30,
-      cwd: process.env.HOME,
+      cwd: os.platform() === 'win32' ? process.env.USERPROFILE : process.env.HOME,
       env: process.env
     });
 

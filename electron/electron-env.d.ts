@@ -27,4 +27,8 @@ interface Window {
     disconnect: (tabId: number) => void;
     onData: (callback: (args: { tabId: number, data: string }) => void) => void;
   }
+  app: {
+    close: () => void;
+    onCloseActiveTabOrWindow: (callback: () => void) => void;
+  }
 }

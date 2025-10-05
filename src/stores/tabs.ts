@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, nextTick } from 'vue';
+import { ref } from 'vue';
 
 export type TabType = 'ssh' | 'local';
 
@@ -80,10 +80,6 @@ export const useTabsStore = defineStore('tabs', () => {
 
     tabs.value.splice(index, 1);
     updateTabNames();
-
-    if (tabs.value.length === 0) {
-      nextTick(() => handleNewSshTab());
-    }
   }
 
   // Initialize with a single ssh tab

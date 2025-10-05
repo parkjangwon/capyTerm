@@ -3,15 +3,14 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "com.electron.capyterm",
   "asar": true,
+  "asarUnpack": [
+    "**/node_modules/node-pty/**"
+  ],
   "productName": "capyTerm",
   "copyright": "Copyright © 2025 parkjangwon",
   "directories": {
     "output": "release/${version}"
   },
-  "files": [
-    "dist",
-    "dist-electron"
-  ],
   "mac": {
     "icon": "build/icon.png",
     "target": [

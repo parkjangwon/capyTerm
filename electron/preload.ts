@@ -50,3 +50,8 @@ contextBridge.exposeInMainWorld('localTerminal', {
     return () => ipcRenderer.removeListener('local-terminal:data', subscription);
   },
 });
+
+contextBridge.exposeInMainWorld('app', {
+  close: () => ipcRenderer.send('close-window'),
+  onCloseActiveTabOrWindow: (callback: () => void) => ipcRenderer.on('close-active-tab-or-window', callback),
+});

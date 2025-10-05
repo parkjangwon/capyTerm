@@ -6,7 +6,7 @@ A simple and minimal terminal application for both SSH and local shell access, i
 
 ## Features
 
-- **Dual Terminal Support**: Seamlessly switch between remote SSH sessions and your local shell.
+- **Dual Terminal Support**: Seamlessly switch between remote SSH sessions and your local shell (local shell available on macOS & Linux).
 - **Minimalist Tab Interface**: A clean, Kitty-like tabbed interface for managing multiple sessions within a single window.
 - **Multi-Window Support**: Open multiple windows, each with its own set of tabs.
 - **Connection Persistence**: Save your SSH connection details (host, port, auth method, etc.) for quick access.
@@ -15,17 +15,16 @@ A simple and minimal terminal application for both SSH and local shell access, i
 
 ### Window and Tab Management
 
-| Shortcut         | Description                  |
-| :--------------- | :--------------------------- |
-| `CmdOrCtrl+N`    | Open a new window.           |
-| `CmdOrCtrl+T`    | Open a new SSH terminal tab. |
-| `CmdOrCtrl+H`    | Open a new local shell tab.  |
-| `CmdOrCtrl+W`    | Close the active tab.        |
-| `Ctrl+Tab`       | Switch to the next tab.      |
-| `Ctrl+Shift+Tab` | Switch to the previous tab.  |
+| Shortcut | Description |
+| :--- | :--- |
+| `Cmd+N`<br>`Ctrl+N` | Open a new window. |
+| `Cmd+T`<br>`Ctrl+T` | Open a new SSH terminal tab. |
+| `Cmd+W`<br>`Ctrl+W` | Close the active tab. |
+| `Cmd+]`<br>`Ctrl+]` | Switch to the next tab. |
+| `Cmd+[`<br>`Ctrl+[` | Switch to the previous tab. |
 
 ### Terminal Actions
 
-| Shortcut      | Description                |
-| :------------ | :------------------------- |
-| `CmdOrCtrl+L` | Clear the terminal screen. |
+| Shortcut | Description |
+| :--- | :--- |
+| `Cmd+L`<br>`Ctrl+L` | Clear the terminal screen. |
